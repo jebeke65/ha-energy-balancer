@@ -56,6 +56,24 @@
   second charger later requires no changes to anything that already exists.
 </p>
 
+<p style="text-align:center; margin: 24px 0;">
+  <img src="images/chain.png" alt="The chain, with each cell's measured power, the rest passed down and the headroom passed back up" style="max-width:100%; height:auto; border-radius:8px; border:1px solid var(--border);">
+</p>
+
+<p>
+  That is the whole model on one screen. Solar produces 3428&nbsp;W and passes
+  3428&nbsp;W of <strong>rest</strong> down. The house takes 1596&nbsp;W and passes
+  1833&nbsp;W on. The car charger takes almost nothing. What survives reaches the two
+  batteries, which share a position and are therefore handled as one
+  <strong>tier</strong>. What nobody wanted lands at the grid: 156&nbsp;W exported.
+</p>
+
+<p>
+  The right-hand column is the other direction: <strong>3498&nbsp;W headroom</strong> at
+  every step, unchanged all the way up. That is the import limit, and it is what stops
+  any cell — in any mode — from being the one that sets a new peak.
+</p>
+
 <p>
   Each tick, the chain is walked twice.
 </p>

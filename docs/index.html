@@ -29,8 +29,9 @@
 
 <h1>What Energy Balancer does</h1>
 <p class="lead">
-  It decides, several times a minute, which of your energy devices should take the
-  next available watt — and which should give one back.
+  It decides, several times a minute, which of your energy devices should take the next
+  available watt and which should give one back — with your grid peak as the ceiling on
+  every one of those decisions.
 </p>
 
 <p>
@@ -58,6 +59,28 @@
   <span class="cell">battery</span><span class="arrow">→</span>
   <span class="cell">grid</span>
 </div>
+
+<h2>What makes it different</h2>
+
+<p>
+  Plenty of tools divide up a solar surplus. What this one does that they generally do
+  not is treat <strong>your grid peak as a hard ceiling on every decision, continuously</strong>
+  — rather than as an alarm that goes off once you are already over it.
+</p>
+
+<p>
+  The import limit is what travels back up the chain as <code>headroom</code>, and it
+  bounds what every cell is allowed to take. That includes the forced modes: telling a
+  battery to <em>charge</em> means "charge hard", not "charge regardless". A forced
+  charge that quietly raises your monthly peak is a defect, and there is no setting that
+  permits it.
+</p>
+
+<p>
+  This matters because a peak is not an ordinary running cost that a good day can win
+  back. It is a high-water mark: on a capacity tariff, one careless quarter of an hour
+  sets a price for the entire period, and nothing done afterwards lowers it again.
+</p>
 
 <h2>What it is not</h2>
 

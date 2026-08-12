@@ -5,7 +5,8 @@
 <h1 align="center">Energy Balancer</h1>
 
 <p align="center">
-  <em>A Home Assistant integration that decides which of your energy devices gets the next watt.</em>
+  <em>Decides which of your energy devices gets the next watt — and never lets any of them
+  set a new grid peak.</em>
 </p>
 
 <p align="center">
@@ -28,9 +29,11 @@ come from somewhere. Every device has its own app, its own idea of "self-consump
 and no idea the others exist.
 
 Left alone they compete. The car charger and the battery both reach for the same
-surplus. At dusk both discharge into a house that only needed one of them. And on the
-wrong morning, something starts importing hard enough to set a monthly peak you then
-pay for all year.
+surplus. At dusk both discharge into a house that only needed one of them.
+
+And on the wrong morning, one of them starts importing hard enough to set a monthly
+peak — a number that, on a capacity tariff, you then keep paying for long after the
+morning is forgotten.
 
 ## What this does
 
@@ -43,6 +46,34 @@ discharge this much, hold, or regulate yourself.
 ```
 solar → house → car charger → battery → battery → grid
 ```
+
+<p align="center">
+  <img src="docs/images/chain.png" alt="The chain: each cell with its measured power, the rest passed down and the headroom passed back up" width="760">
+</p>
+
+Read it top to bottom. Solar produces 3428&nbsp;W, so 3428&nbsp;W of **rest** is passed
+down. The house takes 1596&nbsp;W and passes 1833&nbsp;W on. The car charger takes
+almost nothing, and what is left arrives at the two batteries — which sit at the same
+position, so they form one **tier** and are handled together. What nobody wanted ends up
+at the grid: 156&nbsp;W exported.
+
+Now read the right-hand column. **3498&nbsp;W headroom**, at every single step. That is
+the import limit travelling back up the chain, and no cell may cross it.
+
+## What makes it different
+
+Plenty of tools divide up a solar surplus. The thing this one does that they generally
+do not is treat **your grid peak as a hard ceiling on every single decision, all the
+time** — not as an alarm that fires once you are already over it.
+
+The import limit travels back up the chain as `headroom`, and it bounds what every cell
+is allowed to take. Including the forced modes: telling a battery to *charge* means
+"charge hard", not "charge regardless". A forced charge that quietly raises your monthly
+peak is a bug, not a feature, and there is no setting that permits it.
+
+That matters because a peak is not a running cost you can win back tomorrow. It is a
+high-water mark. One careless quarter of an hour in a month sets a price for the whole
+period, and nothing you do afterwards lowers it.
 
 **It is not a device integration.** It never talks to an inverter, a charger or a
 battery. It reads the sensors you already have and calls the scripts you already wrote.
