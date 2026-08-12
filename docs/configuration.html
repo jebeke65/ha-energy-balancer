@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Configuration — Energy Balancer</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="masthead">
+  <div class="wrap">
+    <a class="title" href="index.html">Energy Balancer <span class="sub">for Home Assistant</span></a>
+    <nav class="top">
+      <a href="index.html">Overview</a>
+      <a href="concepts.html">Concepts</a>
+      <a href="installation.html">Installation</a>
+      <a href="configuration.html" aria-current="page">Configuration</a>
+      <a href="cells.html">Cells</a>
+      <a href="entities.html">Entities</a>
+      <a href="services.html">Services</a>
+      <a href="dashboard.html">Dashboard</a>
+      <a href="troubleshooting.html">Troubleshooting</a>
+    </nav>
+  </div>
+</header>
+
+<div class="wrap">
+
+<h1>Configuration — system inputs</h1>
+<p class="lead">
+  The first screen of the setup wizard. These are the chain's own inputs; everything
+  device-specific lives on the <a href="cells.html">cells page</a>.
+</p>
+
+<p>
+  All of these can be changed later without reinstalling: <em>Settings → Devices &amp;
+  services → Energy Balancer → Configure</em>. The same screen is used for setup and
+  for reconfiguration.
+</p>
+
+<h2>Required sensors</h2>
+
+<p>
+  Without these three the chain cannot run, and the integration will refuse to start
+  with a message naming the missing one. There is no sensible default for any of them.
+</p>
+
+<div class="table-scroll">
+<table>
+  <tr><th>Field</th><th>Key</th><th>Expects</th></tr>
+  <tr>
+    <td>Solar production</td>
+    <td><code>solar_sensor</code></td>
+    <td>An entity reporting current PV production in watts. Positive.</td>
+  </tr>
+  <tr>
+    <td>House consumption</td>
+    <td><code>house_sensor</code></td>
+    <td>An entity reporting current household load in watts. Positive.</td>
+  </tr>
+  <tr>
+    <td>Grid power</td>
+    <td><code>grid_sensor</code></td>
+    <td>An entity reporting grid exchange in watts, <strong>positive when
+        importing</strong>.</td>
+  </tr>
+</table>
+</div>
+
+<div class="warn">
+  <p>
+    <strong>House consumption should exclude the devices you are steering.</strong> If
+    your house sensor already contains the car charger, the chain sees that load twice:
+    once as consumption and once as a cell. Either point at a sensor that excludes them,
+    or list the offending entities under <em>House includes</em> below and they will be
+    subtracted for you.
+  </p>
+</div>
+
+<h2>Optional inputs</h2>
+
+<div class="table-scroll">
+<table>
+  <tr><th>Field</th><th>Key</th><th>Default</th><th>What it does</th></tr>
+  <tr>
+    <td>House includes</td>
+    <td><code>house_includes</code></td>
+    <td>empty</td>
+    <td>Entities whose power is already counted inside the house sensor and must be
+        subtracted from it. Use when you cannot get a clean house figure.</td>
+  </tr>
+  <tr>
+    <td>Solar forecast remaining today</td>
+    <td><code>forecast_sensor</code></td>
+    <td>—</td>
+    <td>Expected remaining PV yield today, in kWh. This is the one forecast input the
+        algorithm actually <em>steers</em> on: it is what lets a battery hold back in
+        the morning because the afternoon will fill it anyway.</td>
+  </tr>
+  <tr>
+    <td>External pool charge %</td>
+    <td><code>charge_pct_sensor</code></td>
+    <td>—</td>
+    <td>Defers the charge decision to an external policy. See
+        <a href="concepts.html">Concepts</a> for the contract; the sensor needs a
+        <code>mode</code> attribute as well as a numeric state.</td>
+  </tr>
+  <tr>
+    <td>Peak import limit fallback</td>
+    <td><code>peak_limit_w</code></td>
+    <td>3500&nbsp;W<br><small>range 0–30000</small></td>
+    <td>The import ceiling used when no limit sensor is configured or all of them are
+        unavailable.</td>
+  </tr>
+  <tr>
+    <td>Peak limit sensors</td>
+    <td><code>peak_limit_sensors</code></td>
+    <td>empty</td>
+    <td>One or more entities carrying an import limit in watts. The
+        <strong>highest</strong> value across them is used. A common pair is a manual
+        ceiling plus your running monthly-peak sensor.</td>
+  </tr>
+  <tr>
+    <td>Update interval</td>
+    <td><code>update_interval_seconds</code></td>
+    <td>10&nbsp;s<br><small>range 5–300</small></td>
+    <td>How often the chain runs. Ten seconds keeps up with a car charger ramping.
+        Raising it reduces database churn at the cost of reaction time.</td>
+  </tr>
+  <tr>
+    <td>Observer mode</td>
+    <td><code>observer_mode</code></td>
+    <td><strong>on</strong></td>
+    <td>Compute and publish, never actuate. Leave it on until the numbers look right.</td>
+  </tr>
+  <tr>
+    <td>Import price</td>
+    <td><code>import_price_per_kwh</code></td>
+    <td>0<br><small>range 0–5</small></td>
+    <td>€/kWh for imported energy. A fixed number, or an entity id if your price varies.
+        Applied incrementally: each tick's kWh delta is priced at the rate valid at that
+        moment, so a changing tariff is handled correctly.</td>
+  </tr>
+  <tr>
+    <td>Export price</td>
+    <td><code>export_price_per_kwh</code></td>
+    <td>0<br><small>range 0–5</small></td>
+    <td>€/kWh for exported energy. Same rules as the import price.</td>
+  </tr>
+</table>
+</div>
+
+<h3>Forecast display inputs</h3>
+
+<p>
+  These feed the dashboard's forecast panel and nothing else — the chain does not steer
+  on them. They exist because the cards ask for figures the algorithm has no need of.
+</p>
+
+<div class="table-scroll">
+<table>
+  <tr><th>Field</th><th>Key</th><th>Expects</th></tr>
+  <tr><td>Forecast today</td><td><code>forecast_today_sensor</code></td><td>Total expected PV today, kWh.</td></tr>
+  <tr><td>Forecast tomorrow</td><td><code>forecast_tomorrow_sensor</code></td><td>Total expected PV tomorrow, kWh.</td></tr>
+  <tr><td>Forecast peak power</td><td><code>forecast_peak_power_sensor</code></td><td>Expected peak production today, W.</td></tr>
+  <tr><td>Forecast peak time</td><td><code>forecast_peak_time_sensor</code></td><td>Timestamp of that peak.</td></tr>
+</table>
+</div>
+
+<h2>Fixed value or live entity</h2>
+
+<p>
+  Several settings accept <strong>either</strong> a number <strong>or</strong> an entity
+  id. Give a number and the integration owns it — it will also create a slider for it so
+  you can drag it on a dashboard. Give an entity id and that entity becomes the single
+  source of truth: the integration reads it live every tick and creates no slider,
+  because two knobs for one value is how values start disagreeing.
+</p>
+
+<p>
+  Recognised entity prefixes are <code>sensor.</code>, <code>input_number.</code>,
+  <code>input_select.</code>, <code>number.</code> and <code>binary_sensor.</code>.
+</p>
+
+<h2>What happens to a bad value</h2>
+
+<p>
+  Every parameter passes through one validation layer when the integration starts.
+  Nothing crashes and nothing is silently skewed:
+</p>
+
+<ul>
+  <li>A value outside its range is <strong>clamped</strong> to the nearest bound.</li>
+  <li>A value of the wrong type falls back to the <strong>documented default</strong>.</li>
+  <li>Either way one warning is logged, naming the parameter, the bad value and the
+      default that replaced it.</li>
+  <li>A missing <em>required</em> sensor is the exception: that raises, with a message
+      telling you which one.</li>
+</ul>
+
+<p>
+  So if a setting is not doing what you expect, the log is the first place to look — the
+  answer is usually already written there.
+</p>
+
+<footer class="foot">
+  Next: <a href="cells.html">Cells</a> — the per-device settings.
+</footer>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Devices &amp; entities — Energy Balancer</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="masthead">
+  <div class="wrap">
+    <a class="title" href="index.html">Energy Balancer <span class="sub">for Home Assistant</span></a>
+    <nav class="top">
+      <a href="index.html">Overview</a>
+      <a href="concepts.html">Concepts</a>
+      <a href="installation.html">Installation</a>
+      <a href="configuration.html">Configuration</a>
+      <a href="cells.html">Cells</a>
+      <a href="entities.html" aria-current="page">Entities</a>
+      <a href="services.html">Services</a>
+      <a href="dashboard.html">Dashboard</a>
+      <a href="troubleshooting.html">Troubleshooting</a>
+    </nav>
+  </div>
+</header>
+
+<div class="wrap">
+
+<h1>Devices &amp; entities</h1>
+<p class="lead">
+  Everything the integration creates, grouped the way it appears on the integration
+  page.
+</p>
+
+<h2>Devices</h2>
+
+<p>
+  Entities are grouped into devices purely to keep the integration page navigable. No
+  entity is renamed by the grouping, and unique ids are unaffected.
+</p>
+
+<div class="table-scroll">
+<table>
+  <tr><th>Device</th><th>Model</th><th>Holds</th></tr>
+  <tr>
+    <td><strong>EB System</strong></td><td>Chain outputs</td>
+    <td>The umbrella. Chain status, forecast figures, diagnostics, the observer switch,
+        the peak-limit slider. Every other device hangs off this one.</td>
+  </tr>
+  <tr>
+    <td><strong>EB &lt;cell&gt;</strong></td><td>Cell</td>
+    <td>One per cell — including the virtual ones, so <em>EB solar</em>, <em>EB
+        house</em> and <em>EB net</em> exist alongside your batteries and charger.
+        Holds the cell sensor and its take-% slider.</td>
+  </tr>
+  <tr>
+    <td><strong>EB Home Battery</strong></td><td>Battery pool</td>
+    <td>One per storage pool. Pool power, state of charge, target, charged and
+        discharged energy, and the pool-level sliders and mode select.</td>
+  </tr>
+  <tr>
+    <td><strong>EB Costs</strong></td><td>Cost accounting</td>
+    <td>Tariff rates and every cost, saving and revenue figure.</td>
+  </tr>
+</table>
+</div>
+
+<h2>Per-cell sensor</h2>
+
+<p>
+  <code>sensor.eb_&lt;cell&gt;</code> — for example <code>sensor.eb_goodwe</code>,
+  <code>sensor.eb_car_charger</code>, <code>sensor.eb_house</code>,
+  <code>sensor.eb_net</code>.
+</p>
+
+<p>
+  The state is the cell's power in watts, signed: positive means it is taking from the
+  chain, negative means it is giving back. The interesting part is in the attributes —
+  the decision, the reason for it, and what the chain handed this cell to work with.
+</p>
+
+<div class="note">
+  <p>
+    <strong>The actuator reads this sensor, not a service call.</strong> Your script is
+    handed the cell sensor and reads the decision from its attributes. That is why
+    adding a device needs no change anywhere in the integration: the contract is a
+    sensor, and every cell publishes the same one.
+  </p>
+</div>
+
+<h2>Chain status</h2>
+
+<div class="table-scroll">
+<table>
+  <tr><th>Entity</th><th>Meaning</th></tr>
+  <tr><td><code>sensor.eb_status</code></td><td>The chain's own summary of the last tick.</td></tr>
+  <tr><td><code>sensor.eb_grid_status</code></td><td><code>importing</code> or <code>exporting</code>.</td></tr>
+  <tr><td><code>sensor.eb_battery_status</code></td><td><code>charging</code>, <code>discharging</code> or <code>idle</code>, across all storage.</td></tr>
+</table>
+</div>
+
+<h2>Pool sensors</h2>
+
+<p>Created per storage pool. With a pool called <code>home_battery</code>:</p>
+
+<div class="table-scroll">
+<table>
+  <tr><th>Entity</th><th>Meaning</th></tr>
+  <tr><td><code>sensor.eb_layer_home_battery</code></td><td>Combined power of the pool, in watts.</td></tr>
+  <tr><td><code>sensor.eb_layer_home_battery_soc</code></td><td>Capacity-weighted state of charge across all members.</td></tr>
+  <tr><td><code>sensor.eb_layer_home_battery_target</code></td><td>The target the pool is steering towards right now.</td></tr>
+  <tr><td><code>sensor.eb_layer_home_battery_energy_charged</code></td><td>Summed charged energy, kWh.</td></tr>
+  <tr><td><code>sensor.eb_layer_home_battery_energy_discharged</code></td><td>Summed discharged energy, kWh.</td></tr>
+</table>
+</div>
+
+<div class="warn">
+  <p>
+    A pool state of charge can hide an empty member. Two batteries at 25% and 5%
+    average out to something comfortable while one of them has nothing left to give.
+    When a pool looks healthy but the house is still importing, check the members
+    individually.
+  </p>
+</div>
+
+<h2>Grid and peak</h2>
+
+<div class="table-scroll">
+<table>
+  <tr><th>Entity</th><th>Meaning</th></tr>
+  <tr><td><code>sensor.eb_grid_power</code></td><td>Grid exchange, signed.</td></tr>
+  <tr><td><code>sensor.eb_grid_import_power</code></td><td>Import only, zero when exporting.</td></tr>
+  <tr><td><code>sensor.eb_grid_export_power</code></td><td>Export only, zero when importing.</td></tr>
+  <tr><td><code>sensor.eb_target_peak_limit</code></td><td>The import ceiling in force right now — the highest of your configured limit sensors, or the fallback.</td></tr>
+  <tr><td><code>sensor.eb_current_vs_peak_percentage</code></td><td>How much of that ceiling is currently used.</td></tr>
+  <tr><td><code>sensor.eb_consecutive_peak_15min</code></td><td>Running average import over the current quarter hour.</td></tr>
+  <tr><td><code>sensor.eb_monthly_consecutive_peak</code></td><td>Highest quarter-hour import seen this month.</td></tr>
+</table>
+</div>
+
+<h2>Load management and surplus</h2>
+
+<div class="table-scroll">
+<table>
+  <tr><th>Entity</th><th>Meaning</th></tr>
+  <tr><td><code>sensor.eb_load_management_status</code></td><td><code>ok</code> or <code>reducing</code>.</td></tr>
+  <tr><td><code>sensor.eb_available_load_reduction</code></td><td>How many watts could still be shed, in total.</td></tr>
+  <tr><td><code>sensor.eb_controllable_devices_count</code></td><td>How many cells are actually steerable.</td></tr>
+  <tr><td><code>sensor.eb_surplus_total_w</code></td><td>Surplus available this tick.</td></tr>
+  <tr><td><code>sensor.eb_surplus_allocated_w</code></td><td>How much of it was placed.</td></tr>
+  <tr><td><code>sensor.eb_surplus_unallocated_w</code></td><td>How much went to the grid because nobody wanted it.</td></tr>
+  <tr><td><code>sensor.eb_surplus_active_devices</code> / <code>_total_devices</code></td><td>How many cells are taking surplus, out of how many could.</td></tr>
+</table>
+</div>
+
+<h2>Forecast</h2>
+
+<div class="table-scroll">
+<table>
+  <tr><th>Entity</th><th>Meaning</th></tr>
+  <tr><td><code>sensor.eb_forecast_remaining_today_kwh</code></td><td>Expected remaining yield today. <strong>This is the one the algorithm steers on.</strong></td></tr>
+  <tr><td><code>sensor.eb_forecast_corrected_today</code></td><td>Today's forecast corrected against what has actually been produced so far.</td></tr>
+  <tr><td><code>sensor.eb_forecast_today_kwh</code> / <code>_tomorrow_kwh</code></td><td>Day totals, display only.</td></tr>
+  <tr><td><code>sensor.eb_forecast_peak_power_today_w</code> / <code>_peak_time_today</code></td><td>Expected peak and when, display only.</td></tr>
+  <tr><td><code>sensor.eb_forecast_source</code></td><td>Which forecast provider is feeding this.</td></tr>
+</table>
+</div>
+
+<h2>Costs and accounting</h2>
+
+<p>
+  Every figure exists for three periods — <code>daily_</code>, <code>monthly_</code> and
+  <code>yearly_</code> — and the counters survive a restart.
+</p>
+
+<div class="table-scroll">
+<table>
+  <tr><th>Suffix</th><th>Meaning</th></tr>
+  <tr><td><code>_grid_import_energy</code> / <code>_grid_export_energy</code></td><td>Imported and exported energy, kWh.</td></tr>
+  <tr><td><code>_costs</code></td><td>Cost of imported energy.</td></tr>
+  <tr><td><code>_export_revenue</code></td><td>Revenue from exported energy.</td></tr>
+  <tr><td><code>_net_cost</code></td><td>Costs minus revenue.</td></tr>
+  <tr><td><code>_battery_savings</code></td><td>Avoided import, valued at the rate that applied at the time.</td></tr>
+  <tr><td><code>_savings</code></td><td>Total saving for the period.</td></tr>
+</table>
+</div>
+
+<p>
+  Plus <code>sensor.eb_lifetime_total_savings</code>,
+  <code>sensor.eb_tariff_current_import_rate</code> and
+  <code>sensor.eb_tariff_current_export_rate</code>. Rates are applied incrementally, so
+  a tariff that changes during the day is priced correctly rather than retroactively.
+</p>
+
+<h2>Diagnostics</h2>
+
+<div class="table-scroll">
+<table>
+  <tr><th>Entity</th><th>Meaning</th></tr>
+  <tr><td><code>sensor.eb_diag_grid_sign</code></td><td>Which sign convention was detected on your grid sensor. Check this first when things behave backwards.</td></tr>
+  <tr><td><code>sensor.eb_diag_battery_capacity</code></td><td>Total configured storage, kWh.</td></tr>
+  <tr><td><code>sensor.eb_diag_update_interval</code></td><td>The interval actually in use.</td></tr>
+  <tr><td><code>sensor.eb_diag_charger_count</code></td><td>How many charger cells were found.</td></tr>
+  <tr><td><code>sensor.eb_diag_sensors_unavailable</code></td><td>How many configured sensors are currently unavailable. Anything other than zero explains a lot.</td></tr>
+</table>
+</div>
+
+<h2>Controls</h2>
+
+<h3>Switch</h3>
+<div class="table-scroll">
+<table>
+  <tr><td><code>switch.eb_observer_mode</code></td>
+      <td><strong>On</strong> = compute and publish, never act. <strong>Off</strong> = live.
+          Writes through to the config entry, so the switch and the options flow always
+          agree.</td></tr>
+</table>
+</div>
+
+<h3>Numbers</h3>
+<div class="table-scroll">
+<table>
+  <tr><th>Entity</th><th>Meaning</th></tr>
+  <tr><td><code>number.eb_&lt;cell&gt;_take</code></td>
+      <td>The take-% slider for one cell. It is a <em>view</em> on the real knob: if
+          <code>take_pct</code> points at an entity, dragging this writes to that
+          entity.</td></tr>
+  <tr><td><code>number.eb_&lt;cell&gt;_hysteresis</code></td><td>Dead band, %.</td></tr>
+  <tr><td><code>number.eb_&lt;cell&gt;_charge_floor_w</code></td><td>Minimum worthwhile charge power, W.</td></tr>
+  <tr><td><code>number.eb_&lt;pool&gt;_sunny_min_soc</code></td><td>Floor for a sunny forecast. Pool-level.</td></tr>
+  <tr><td><code>number.eb_&lt;pool&gt;_no_sun_min_soc</code></td><td>Floor for a dull forecast. Pool-level.</td></tr>
+  <tr><td><code>number.eb_&lt;pool&gt;_manual_min_soc</code></td><td>The verbatim floor. Pool-level.</td></tr>
+  <tr><td><code>number.eb_peak_limit_w</code></td><td>The fallback import ceiling.</td></tr>
+</table>
+</div>
+
+<div class="note">
+  <p>
+    <strong>A slider only appears when the value is a number.</strong> Configure a
+    parameter as an entity id and no slider is created for it — that entity is the one
+    knob, and a second control would only let the two disagree.
+  </p>
+  <p>
+    State-of-charge floors are pool-level for a reason: a pool's target is a
+    capacity-weighted average, so a per-member floor would not mean anything. One knob
+    writes the same value to every member.
+  </p>
+</div>
+
+<h3>Select</h3>
+<div class="table-scroll">
+<table>
+  <tr><td><code>select.eb_&lt;pool&gt;_min_soc_mode</code></td>
+      <td><code>balanced</code> runs the floor algorithm with its safeguards;
+          <code>manual</code> uses the manual floor slider verbatim, which is how you
+          deliberately go below what the safeguards allow.</td></tr>
+</table>
+</div>
+
+<h2>Compatibility sensors</h2>
+
+<p>
+  A set of plainly named sensors exists for dashboard cards that expect a conventional
+  layout: <code>sensor.eb_solar_power</code>,
+  <code>sensor.eb_home_consumption_power</code>, <code>sensor.eb_battery_power</code>,
+  <code>sensor.eb_battery_soc</code>, <code>sensor.eb_ev_power</code>,
+  <code>sensor.eb_autarky_rate</code> and <code>sensor.eb_self_consumption_rate</code>.
+  They carry the same values as the chain entities above, shaped the way generic energy
+  cards expect.
+</p>
+
+<footer class="foot">
+  Next: <a href="services.html">Services</a> · <a href="dashboard.html">Dashboard</a>
+</footer>
+
+</div>
+</body>
+</html>

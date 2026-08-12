@@ -1,0 +1,254 @@
+# Energy Balancer dashboard — SEM lookalike (cards ported to the eb- namespace).
+# View order mirrors SEM: Home, Energy, Battery, EV, Control, Configuration,
+# Costs, System. The generator injects entity_prefix (sensor.eb_) into every
+# eb- card, chain-card cells, chart series, and config-card cells/pools.
+#
+# Still SEM-only (no EB data yet, intentionally omitted): sankey flows,
+# energy-impact/CO2, EV charge-plan (today-plan/schedule/ev-progress),
+# SOC-zones, forecast-vs-actual. Add their sensors first, then the cards.
+#
+# Centerpiece = eb-chain-card (EB's own power-flow visual), fed by the
+# compatibility sensors (sensor.eb_solar_power, eb_battery_power, ...).
+
+title: Energy Balancer
+views:
+  # ── HOME — power flow & status ──
+  - title: Home
+    path: home
+    icon: mdi:home-lightning-bolt
+    type: panel
+    cards:
+      - type: vertical-stack
+        cards:
+          - type: custom:eb-tab-header
+            tab: home
+          - type: custom:eb-price-card
+            entity: sensor.eb_tariff_current_import_rate
+            compact: true
+          # EB chain-card (replaces SEM's bubble system-diagram). Cells are
+          # injected by the generator from the configured cells.
+          - type: custom:eb-chain-card
+            entity_prefix: sensor.eb_
+            power_threshold: 50
+            background_opacity: 0.1
+            colors:
+              consumption: "#ff4444"
+              production: "#4caf50"
+              idle: "#888888"
+              offline: "#f44336"
+              auto_border: "#ffffff"
+              manual_border: "#e040fb"
+          - type: custom:eb-home-status-card
+            entity_prefix: sensor.eb_
+          - type: custom:eb-solar-card
+            entity_prefix: sensor.eb_
+          - type: custom:eb-weather-card
+            entity: weather.home
+          - type: custom:eb-chart-card
+            chart_cells: true
+            default_period: "24h"
+            title: 24h Power
+
+  # ── ENERGY — gauges & power curves ──
+  - title: Energy
+    path: energy
+    icon: mdi:lightning-bolt
+    type: panel
+    cards:
+      - type: vertical-stack
+        cards:
+          - type: custom:eb-tab-header
+            tab: energy
+          - type: horizontal-stack
+            cards:
+              - type: custom:eb-gauge-card
+                entity: sensor.eb_self_consumption_rate
+                name: Self-consumption
+                color: '#4db6ac'
+              - type: custom:eb-gauge-card
+                entity: sensor.eb_autarky_rate
+                name: Autarky
+                color: '#8DC892'
+          - type: custom:eb-chart-card
+            chart_cells: true
+            default_period: "24h"
+            title: 24h Power
+          - type: custom:eb-chart-card
+            default_period: "24h"
+            title: Grid import / export (today)
+            series:
+              - entity: sensor.eb_daily_grid_import_energy
+                name: Import
+                color: "#ff7043"
+                type: area
+              - entity: sensor.eb_daily_grid_export_energy
+                name: Export
+                color: "#4caf50"
+                type: area
+
+  # ── BATTERY — hero & 24h trend ──
+  - title: Battery
+    path: battery
+    icon: mdi:battery-charging-80
+    type: panel
+    cards:
+      - type: vertical-stack
+        cards:
+          - type: custom:eb-tab-header
+            tab: battery
+          - type: custom:eb-battery-card
+            entity_prefix: sensor.eb_
+          - type: custom:eb-chart-card
+            preset: battery
+            title: Battery 24h
+
+  # ── EV — car charger cell ──
+  - title: EV
+    path: ev
+    icon: mdi:car-electric
+    type: panel
+    cards:
+      - type: vertical-stack
+        cards:
+          - type: custom:eb-tab-header
+            tab: ev
+          - type: entities
+            title: Car / charger
+            entities:
+              - entity: sensor.eb_car_charger
+                name: EB car (power)
+              - entity: sensor.eb_ev_power
+                name: Charging power
+              - entity: number.eb_car_charger_take
+                name: Take %
+              - entity: binary_sensor.car_connected
+                name: Connected
+              - entity: binary_sensor.car_charging
+                name: Charging
+              - entity: input_select.car_charge_mode
+                name: Charge mode
+          - type: custom:eb-chart-card
+            default_period: "24h"
+            title: Car 24h
+            series:
+              - entity: sensor.eb_layer_car_charger
+                name: Car
+                color: "#8DC892"
+                type: area
+
+  # ── CONTROL — SEM control cards on live EB data ──
+  - title: Control
+    path: control
+    icon: mdi:tune-vertical
+    type: panel
+    cards:
+      - type: vertical-stack
+        cards:
+          - type: custom:eb-tab-header
+            tab: control
+          - type: custom:eb-control-card
+          - type: custom:eb-load-priority-card
+          - type: entities
+            title: Control — take %
+            entities:
+              - entity: number.eb_car_charger_take
+                name: Car %
+              - entity: number.eb_goodwe_take
+                name: GoodWe %
+              - entity: number.eb_marstek_take
+                name: Marstek %
+          - type: markdown
+            title: Actuator intent (dry-run while observer is on)
+            content: |
+              {% for c in ['car_charger','goodwe','marstek'] -%}
+              {% set e = 'sensor.eb_' ~ c -%}
+              - **{{ c }}**: {{ state_attr(e,'actuator_action') }} → {{ state_attr(e,'actuator_setpoint') }}{{ state_attr(e,'actuator_unit') }} (sent: {{ state_attr(e,'actuator_sent') }})
+              {% endfor -%}
+
+  # ── CONFIGURATION — in-dashboard settings (config-card) ──
+  - title: Configuration
+    path: config
+    icon: mdi:cog-outline
+    type: panel
+    cards:
+      - type: vertical-stack
+        cards:
+          - type: custom:eb-tab-header
+            tab: config
+          # cells + pools injected by the generator; steppers write through
+          # number.eb_* / switch.eb_observer_mode -> config-entry options.
+          - type: custom:eb-config-card
+          - type: entities
+            title: System sensors (live)
+            entities:
+              - entity: sensor.solar_production
+                name: Solar
+              - entity: sensor.house_consumption_without_car_charger
+                name: House
+              - entity: sensor.grid_active_power
+                name: Grid
+              - entity: sensor.solar_forecast_remaining_today
+                name: Forecast today
+
+  # ── COSTS — tariff + cost/savings accounting ──
+  - title: Costs
+    path: costs
+    icon: mdi:cash-multiple
+    type: panel
+    cards:
+      - type: vertical-stack
+        cards:
+          - type: custom:eb-tab-header
+            tab: costs
+          - type: custom:eb-price-card
+            entity: sensor.eb_tariff_current_import_rate
+          - type: custom:eb-costs-card
+          - type: custom:eb-period-selector-card
+            default_period: week
+          - type: custom:eb-chart-card
+            default_period: "24h"
+            title: Costs / savings (today)
+            series:
+              - entity: sensor.eb_daily_costs
+                name: Costs
+                color: "#ff7043"
+                type: line
+              - entity: sensor.eb_daily_savings
+                name: Savings
+                color: "#4caf50"
+                type: line
+              - entity: sensor.eb_daily_export_revenue
+                name: Export
+                color: "#4db6ac"
+                type: line
+          - type: custom:eb-costs-detail-card
+
+  # ── SYSTEM — health & diagnostics ──
+  - title: System
+    path: system
+    icon: mdi:heart-pulse
+    type: panel
+    cards:
+      - type: vertical-stack
+        cards:
+          - type: custom:eb-tab-header
+            tab: system
+          - type: custom:eb-system-card
+          - type: custom:eb-grid-card
+          - type: entities
+            title: Layers / pools
+            entities:
+              - sensor.eb_layer_solar
+              - sensor.eb_layer_house
+              - sensor.eb_layer_car_charger
+              - sensor.eb_layer_home_battery
+              - sensor.eb_layer_home_battery_soc
+              - sensor.eb_layer_home_battery_target
+              - sensor.eb_layer_net
+          - type: markdown
+            title: Per-cell diagnostics
+            content: |
+              {% for c in ['solar','house','car_charger','goodwe','marstek','net'] -%}
+              {% set e = 'sensor.eb_' ~ c -%}
+              - **{{ c }}**: {{ state_attr(e,'action') }} · {{ states(e) }} W · rest in {{ state_attr(e,'rest_in_w') }} / out {{ state_attr(e,'rest_out_w') }} · headroom {{ state_attr(e,'headroom_w') }} — _{{ state_attr(e,'reason') }}_
+              {% endfor -%}

@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dashboard — Energy Balancer</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="masthead">
+  <div class="wrap">
+    <a class="title" href="index.html">Energy Balancer <span class="sub">for Home Assistant</span></a>
+    <nav class="top">
+      <a href="index.html">Overview</a>
+      <a href="concepts.html">Concepts</a>
+      <a href="installation.html">Installation</a>
+      <a href="configuration.html">Configuration</a>
+      <a href="cells.html">Cells</a>
+      <a href="entities.html">Entities</a>
+      <a href="services.html">Services</a>
+      <a href="dashboard.html" aria-current="page">Dashboard</a>
+      <a href="troubleshooting.html">Troubleshooting</a>
+    </nav>
+  </div>
+</header>
+
+<div class="wrap">
+
+<h1>Dashboard</h1>
+<p class="lead">
+  A complete dashboard is generated from your configuration. You do not have to use it —
+  every value is a normal entity — but it saves an evening of card wrangling.
+</p>
+
+<h2>Getting it</h2>
+
+<pre><code>action: energy_balancer.generate_dashboard
+data:
+  dashboard_title: Energy
+  dashboard_path: energy-balancer
+</code></pre>
+
+<p>Three things happen:</p>
+
+<ol>
+  <li>The card bundle is copied to <code>www/energy_balancer/eb-cards.js</code>.</li>
+  <li>It is registered as a Lovelace resource, with a content hash appended to the URL
+      so browsers cannot serve a stale copy.</li>
+  <li>A dashboard is built from your actual cells and registered at the path you gave.</li>
+</ol>
+
+<p>
+  The dashboard reflects <em>your</em> setup: one battery or three, a charger or none.
+  Re-run the service after adding or removing a cell.
+</p>
+
+<h2>What is on it</h2>
+
+<h3>Flow and status</h3>
+<div class="table-scroll">
+<table>
+  <tr><td><code>eb-flow-card</code></td><td>Live energy flow between solar, house, storage, charger and grid.</td></tr>
+  <tr><td><code>eb-system-diagram-card</code></td><td>The chain itself, drawn as cells in order, with each cell's decision.</td></tr>
+  <tr><td><code>eb-home-status-card</code></td><td>House consumption at a glance.</td></tr>
+  <tr><td><code>eb-grid-card</code></td><td>Import, export, and how close you are to the peak ceiling.</td></tr>
+  <tr><td><code>eb-solar-card</code> / <code>eb-solar-summary-card</code></td><td>Production now and today.</td></tr>
+</table>
+</div>
+
+<h3>Storage</h3>
+<div class="table-scroll">
+<table>
+  <tr><td><code>eb-battery-card</code></td><td>State of charge, power and target per battery or pool.</td></tr>
+  <tr><td><code>eb-battery-zones-card</code></td><td>The state-of-charge band — floor, target, ceiling — drawn as zones, which makes it obvious when the target sits below where you are.</td></tr>
+</table>
+</div>
+
+<h3>Car charging</h3>
+<div class="table-scroll">
+<table>
+  <tr><td><code>eb-ev-status-card</code></td><td>Connected, charging, delivering.</td></tr>
+  <tr><td><code>eb-ev-progress-card</code></td><td>Session progress.</td></tr>
+  <tr><td><code>eb-charger-status-card</code></td><td>The charger's own reported state.</td></tr>
+</table>
+</div>
+
+<h3>Money</h3>
+<div class="table-scroll">
+<table>
+  <tr><td><code>eb-costs-card</code> / <code>eb-costs-detail-card</code></td><td>Costs, revenue and savings per period.</td></tr>
+  <tr><td><code>eb-price-card</code></td><td>The tariff rates currently in force.</td></tr>
+  <tr><td><code>eb-energy-impact-card</code></td><td>What the balancing actually saved.</td></tr>
+  <tr><td><code>eb-period-selector-card</code></td><td>Switches the money cards between day, month and year.</td></tr>
+</table>
+</div>
+
+<h3>Control and planning</h3>
+<div class="table-scroll">
+<table>
+  <tr><td><code>eb-control-card</code></td><td>Observer mode, take percentages, floors.</td></tr>
+  <tr><td><code>eb-config-card</code></td><td>Current configuration, read-only.</td></tr>
+  <tr><td><code>eb-load-priority-card</code></td><td>The chain order — who gets surplus first.</td></tr>
+  <tr><td><code>eb-today-plan-card</code></td><td>What the forecast implies for the rest of today.</td></tr>
+  <tr><td><code>eb-weather-card</code></td><td>Conditions, as context for the forecast.</td></tr>
+  <tr><td><code>eb-schedule-card</code></td><td>Time-based settings, where you use them.</td></tr>
+  <tr><td><code>eb-chart-card</code> / <code>eb-gauge-card</code></td><td>Generic history and gauge cards in the same visual language.</td></tr>
+  <tr><td><code>eb-diagnose-button</code></td><td>Dumps the current chain state for a bug report.</td></tr>
+</table>
+</div>
+
+<h2>Using the cards yourself</h2>
+
+<p>
+  Once the resource is registered, the cards are available anywhere in Home Assistant.
+  Add them by hand in YAML mode:
+</p>
+
+<pre><code>type: custom:eb-battery-card
+entity: sensor.eb_layer_home_battery
+</code></pre>
+
+<div class="note">
+  <p>
+    Re-running <code>generate_dashboard</code> <strong>overwrites</strong> the dashboard
+    at that path. If you have customised it, generate to a different path, or copy your
+    version somewhere safe first.
+  </p>
+</div>
+
+<h2>If the cards do not render</h2>
+
+<ol>
+  <li>Check that <code>www/energy_balancer/eb-cards.js</code> exists.</li>
+  <li>Check <em>Settings → Dashboards → Resources</em> for the entry.</li>
+  <li>Hard-refresh the browser. On the companion app, clear the frontend cache.</li>
+  <li>On a fresh install, restart Home Assistant once — the registration needs it.</li>
+</ol>
+
+<footer class="foot">
+  Next: <a href="troubleshooting.html">Troubleshooting</a>
+</footer>
+
+</div>
+</body>
+</html>

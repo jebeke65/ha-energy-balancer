@@ -1,0 +1,50 @@
+generate_dashboard:
+  fields:
+    dashboard_title:
+      required: false
+      default: "Energy Balancer"
+      example: "Energy"
+      selector:
+        text:
+    dashboard_path:
+      required: false
+      default: "ebi-dashboard"
+      example: "energy-balancer"
+      selector:
+        text:
+
+set_option:
+  # Only the options listed in EBCoordinator.LIVE_ALGO_KEYS (per cell) and
+  # LIVE_SYSTEM_KEYS (system-wide) are accepted; anything else is rejected with
+  # an error naming the ones that are. Those are exactly the settings that can be
+  # applied without rebuilding the chain.
+  fields:
+    cell:
+      required: false
+      example: "home_battery"
+      selector:
+        text:
+    option:
+      required: true
+      example: "take_pct"
+      selector:
+        select:
+          custom_value: true
+          options:
+            - "take_pct"
+            - "hysteresis"
+            - "charge_floor_w"
+            - "sunny_min_soc"
+            - "no_sun_min_soc"
+            - "manual_min_soc"
+            - "min_soc_mode"
+            - "pv_weight"
+            - "peak_limit_w"
+            - "observer_mode"
+            - "import_price_per_kwh"
+            - "export_price_per_kwh"
+    value:
+      required: true
+      example: 50
+      selector:
+        text:

@@ -1,0 +1,182 @@
+{
+  "config": {
+    "step": {
+      "system": {
+        "title": "Energy Balancer — systeemsensoren",
+        "description": "De keten-inputs. Zon, huis en net zijn verplicht; forecast en de laad-%-sensor zijn optioneel.",
+        "data": {
+          "solar_sensor": "Zonneproductie (W)",
+          "house_sensor": "Huisverbruik (W)",
+          "grid_sensor": "Netvermogen (W, + = import)",
+          "forecast_sensor": "Zonneforecast resterend vandaag (kWh)",
+          "charge_pct_sensor": "Externe pool laad-% (optioneel)",
+          "peak_limit_w": "Piek-import-limiet fallback (W)",
+          "peak_limit_sensors": "Piek-limiet-sensoren (hoogste telt)",
+          "update_interval_seconds": "Update-interval (s)",
+          "observer_mode": "Observer-modus (geen sturing)"
+        }
+      },
+      "cells": {
+        "title": "Energy Balancer — cellen",
+        "description": "Toevoegen, bewerken of afronden. Geconfigureerde cellen: {count}.",
+        "data": {
+          "cell": "Cel"
+        }
+      },
+      "cell": {
+        "title": "Cel: {cell}",
+        "description": "Hardware- en algoritme-instellingen voor deze cel.",
+        "data": {
+          "id": "Cel-id",
+          "position": "Positie (prioriteit; gelijk = pool)",
+          "mode": "Modus",
+          "type": "Type",
+          "can_charge": "Kan laden",
+          "can_discharge": "Kan ontladen",
+          "max_charge_w": "Max laden (W)",
+          "max_discharge_w": "Max ontladen (W)",
+          "capacity_kwh": "Capaciteit (kWh)",
+          "min_soc": "Min SoC (%)",
+          "max_soc": "Max SoC (%)",
+          "power_sensor": "Vermogenssensor",
+          "power_sign": "Vermogensteken (1 of -1)",
+          "soc_sensor": "SoC-sensor",
+          "energy_charged_sensor": "Sensor geladen energie",
+          "energy_discharged_sensor": "Sensor ontladen energie",
+          "take_pct": "Take % (entity-id of constante)",
+          "hysteresis": "Hysterese (%)",
+          "charge_floor_w": "Laad-vloer (W)",
+          "sunny_min_soc": "Min SoC bij zon (%)",
+          "no_sun_min_soc": "Min SoC zonder zon (%)",
+          "pv_weight": "PV-gewicht (entity-id of constante)",
+          "connected_sensor": "Verbonden-sensor",
+          "charging_sensor": "Laad-sensor",
+          "charge_mode_entity": "Laadmodus-entity",
+          "set_flag_on_charge": "Vlag zetten bij laden",
+          "no_discharge_on_flag": "Niet ontladen bij vlag",
+          "actuator_service": "Actuator-service (leeg = standaard script per cel)",
+          "actuator_unit": "Eenheid setpoint (W / A / %)",
+          "actuator_voltage": "Spanning (voor A)",
+          "actuator_phases": "Fasen (voor A)"
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "Energy Balancer is al geconfigureerd."
+    }
+  },
+  "options": {
+    "step": {
+      "system": {
+        "title": "Energy Balancer — systeemsensoren",
+        "data": {
+          "solar_sensor": "Zonneproductie (W)",
+          "house_sensor": "Huisverbruik (W)",
+          "grid_sensor": "Netvermogen (W, + = import)",
+          "forecast_sensor": "Zonneforecast resterend vandaag (kWh)",
+          "charge_pct_sensor": "Externe pool laad-% (optioneel)",
+          "peak_limit_w": "Piek-import-limiet fallback (W)",
+          "peak_limit_sensors": "Piek-limiet-sensoren (hoogste telt)",
+          "update_interval_seconds": "Update-interval (s)",
+          "observer_mode": "Observer-modus (geen sturing)"
+        }
+      },
+      "cells": {
+        "title": "Energy Balancer — cellen",
+        "description": "Kies een cel om te bewerken, 🗑 om te verwijderen, toevoegen of afronden.",
+        "data": {
+          "cell": "Cel"
+        }
+      },
+      "cell": {
+        "title": "Cel bewerken",
+        "data": {
+          "id": "Cel-id",
+          "position": "Positie (prioriteit; gelijk = pool)",
+          "mode": "Modus",
+          "type": "Type",
+          "can_charge": "Kan laden",
+          "can_discharge": "Kan ontladen",
+          "max_charge_w": "Max laden (W)",
+          "max_discharge_w": "Max ontladen (W)",
+          "capacity_kwh": "Capaciteit (kWh)",
+          "min_soc": "Min SoC (%)",
+          "max_soc": "Max SoC (%)",
+          "power_sensor": "Vermogenssensor",
+          "power_sign": "Vermogensteken (1 of -1)",
+          "soc_sensor": "SoC-sensor",
+          "energy_charged_sensor": "Sensor geladen energie",
+          "energy_discharged_sensor": "Sensor ontladen energie",
+          "take_pct": "Take % (entity-id of constante)",
+          "hysteresis": "Hysterese (%)",
+          "charge_floor_w": "Laad-vloer (W)",
+          "sunny_min_soc": "Min SoC bij zon (%)",
+          "no_sun_min_soc": "Min SoC zonder zon (%)",
+          "pv_weight": "PV-gewicht (entity-id of constante)",
+          "connected_sensor": "Verbonden-sensor",
+          "charging_sensor": "Laad-sensor",
+          "charge_mode_entity": "Laadmodus-entity",
+          "set_flag_on_charge": "Vlag zetten bij laden",
+          "no_discharge_on_flag": "Niet ontladen bij vlag",
+          "actuator_service": "Actuator-service (leeg = standaard script per cel)",
+          "actuator_unit": "Eenheid setpoint (W / A / %)",
+          "actuator_voltage": "Spanning (voor A)",
+          "actuator_phases": "Fasen (voor A)"
+        }
+      }
+    }
+  },
+  "selector": {
+    "cell_mode": {
+      "options": {
+        "off": "Uit",
+        "surplus": "Enkel bij overschot",
+        "balanced": "Gebalanceerd",
+        "charge": "Laden (geforceerd)",
+        "discharge": "Ontladen (geforceerd)",
+        "autonomous": "Autonoom"
+      }
+    },
+    "cell_type": {
+      "options": {
+        "house_battery": "Thuisbatterij",
+        "car_charger": "Autolader",
+        "grid": "Net"
+      }
+    }
+  },
+  "services": {
+    "generate_dashboard": {
+      "name": "Dashboard genereren",
+      "description": "Bouwt een Energy Balancer-dashboard op basis van de huidige configuratie en registreert het bij Home Assistant.",
+      "fields": {
+        "dashboard_title": {
+          "name": "Titel",
+          "description": "Naam in de zijbalk."
+        },
+        "dashboard_path": {
+          "name": "URL-pad",
+          "description": "URL-pad. Moet een koppelteken bevatten."
+        }
+      }
+    },
+    "set_option": {
+      "name": "Optie instellen",
+      "description": "Wijzigt een live instelbare optie. Wordt meteen toegepast op de draaiende keten en bewaard in de configuratie.",
+      "fields": {
+        "cell": {
+          "name": "Cel of pool",
+          "description": "Cel-id, of een pool-id om de waarde naar elke deelnemer te schrijven. Laat leeg voor een systeeminstelling."
+        },
+        "option": {
+          "name": "Optie",
+          "description": "De parameter die je wijzigt."
+        },
+        "value": {
+          "name": "Waarde",
+          "description": "Een getal, of een entity-id om live te volgen."
+        }
+      }
+    }
+  }
+}

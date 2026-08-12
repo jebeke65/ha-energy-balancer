@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Services — Energy Balancer</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="masthead">
+  <div class="wrap">
+    <a class="title" href="index.html">Energy Balancer <span class="sub">for Home Assistant</span></a>
+    <nav class="top">
+      <a href="index.html">Overview</a>
+      <a href="concepts.html">Concepts</a>
+      <a href="installation.html">Installation</a>
+      <a href="configuration.html">Configuration</a>
+      <a href="cells.html">Cells</a>
+      <a href="entities.html">Entities</a>
+      <a href="services.html" aria-current="page">Services</a>
+      <a href="dashboard.html">Dashboard</a>
+      <a href="troubleshooting.html">Troubleshooting</a>
+    </nav>
+  </div>
+</header>
+
+<div class="wrap">
+
+<h1>Services</h1>
+<p class="lead">Two, and you will mostly use neither.</p>
+
+<h2><code>energy_balancer.set_option</code></h2>
+
+<p>
+  Change a tunable at runtime. The change is applied to the running chain immediately
+  <em>and</em> written into the config entry, so the options flow, the dashboard slider
+  and the service call never drift apart.
+</p>
+
+<div class="table-scroll">
+<table>
+  <tr><th>Field</th><th>Required</th><th>Meaning</th></tr>
+  <tr><td><code>option</code></td><td>yes</td><td>The parameter to change.</td></tr>
+  <tr><td><code>value</code></td><td>yes</td><td>A number, or an entity id to follow live.</td></tr>
+  <tr><td><code>cell</code></td><td>no</td><td>Which cell — or which pool. Omit for a system-wide setting.</td></tr>
+</table>
+</div>
+
+<h3>What can be changed</h3>
+
+<div class="table-scroll">
+<table>
+  <tr><th>Scope</th><th>Options</th></tr>
+  <tr>
+    <td>Per cell (<code>cell</code> given)</td>
+    <td><code>sunny_min_soc</code>, <code>no_sun_min_soc</code>,
+        <code>hysteresis</code>, <code>charge_floor_w</code>, <code>take_pct</code>,
+        <code>pv_weight</code>, <code>min_soc_mode</code>,
+        <code>manual_min_soc</code></td>
+  </tr>
+  <tr>
+    <td>System-wide (<code>cell</code> omitted)</td>
+    <td><code>peak_limit_w</code>, <code>observer_mode</code>,
+        <code>import_price_per_kwh</code>, <code>export_price_per_kwh</code></td>
+  </tr>
+</table>
+</div>
+
+<p>
+  Anything else is rejected with an error naming the options that <em>are</em> allowed.
+  These are the settings that can be applied without rebuilding the chain; the rest need
+  the options flow, because changing them means a reload.
+</p>
+
+<h3>Naming a pool</h3>
+
+<p>
+  Give a <strong>pool</strong> id instead of a cell id and the value fans out to every
+  member. That is the correct way to move a state-of-charge floor on pooled storage —
+  writing it to one member only would leave the two halves of a pool disagreeing about
+  where the floor is.
+</p>
+
+<h3>Examples</h3>
+
+<pre><code># Give the car charger half of what it is offered
+action: energy_balancer.set_option
+data:
+  cell: car_charger
+  option: take_pct
+  value: 50
+</code></pre>
+
+<pre><code># Raise the floor on the whole battery pool before a cold night
+action: energy_balancer.set_option
+data:
+  cell: home_battery
+  option: no_sun_min_soc
+  value: 60
+</code></pre>
+
+<pre><code># Follow a live entity instead of a fixed number
+action: energy_balancer.set_option
+data:
+  cell: goodwe
+  option: take_pct
+  value: input_number.goodwe_take
+</code></pre>
+
+<pre><code># Back into observer mode
+action: energy_balancer.set_option
+data:
+  option: observer_mode
+  value: true
+</code></pre>
+
+<div class="note">
+  <p>
+    Live tunables do <strong>not</strong> trigger a reload. Changing one of these from a
+    script every few minutes is safe; changing something else from the options flow
+    rebuilds the chain and briefly interrupts steering.
+  </p>
+</div>
+
+<h2><code>energy_balancer.generate_dashboard</code></h2>
+
+<p>
+  Builds a complete Energy Balancer dashboard from your actual configuration and
+  registers it with Home Assistant. Run it once after setup, and again whenever you add
+  or remove a cell.
+</p>
+
+<div class="table-scroll">
+<table>
+  <tr><th>Field</th><th>Default</th><th>Meaning</th></tr>
+  <tr><td><code>dashboard_title</code></td><td><code>Energy Balancer</code></td><td>The name shown in the sidebar.</td></tr>
+  <tr><td><code>dashboard_path</code></td><td><code>ebi-dashboard</code></td><td>URL path. <strong>Must contain a hyphen</strong> — Home Assistant requires it.</td></tr>
+</table>
+</div>
+
+<pre><code>action: energy_balancer.generate_dashboard
+data:
+  dashboard_title: Energy
+  dashboard_path: energy-balancer
+</code></pre>
+
+<p>
+  The card bundle is copied into your <code>www/</code> folder and registered as a
+  Lovelace resource with a content hash appended, so an updated bundle is picked up
+  without anyone having to clear a browser cache.
+</p>
+
+<div class="warn">
+  <p>
+    On a brand-new installation the dashboard may only appear after one restart —
+    Home Assistant has to notice the new registration. After that it updates live.
+  </p>
+  <p>
+    Re-running the service <strong>overwrites</strong> the dashboard at that path. If
+    you have customised it, generate to a different path or make a copy first.
+  </p>
+</div>
+
+<footer class="foot">
+  Next: <a href="dashboard.html">Dashboard</a> · <a href="troubleshooting.html">Troubleshooting</a>
+</footer>
+
+</div>
+</body>
+</html>

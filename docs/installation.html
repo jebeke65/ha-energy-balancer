@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Installation — Energy Balancer</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="masthead">
+  <div class="wrap">
+    <a class="title" href="index.html">Energy Balancer <span class="sub">for Home Assistant</span></a>
+    <nav class="top">
+      <a href="index.html">Overview</a>
+      <a href="concepts.html">Concepts</a>
+      <a href="installation.html" aria-current="page">Installation</a>
+      <a href="configuration.html">Configuration</a>
+      <a href="cells.html">Cells</a>
+      <a href="entities.html">Entities</a>
+      <a href="services.html">Services</a>
+      <a href="dashboard.html">Dashboard</a>
+      <a href="troubleshooting.html">Troubleshooting</a>
+    </nav>
+  </div>
+</header>
+
+<div class="wrap">
+
+<h1>Installation</h1>
+<p class="lead">
+  Install, point it at three sensors, and leave observer mode on until you trust the
+  numbers.
+</p>
+
+<h2>Before you start</h2>
+
+<div class="table-scroll">
+<table>
+  <tr><th>You need</th><th>Notes</th></tr>
+  <tr><td>Home Assistant 2024.6.0 or newer</td><td>Older versions lack the config-entry migration API this integration relies on.</td></tr>
+  <tr><td>Solar production sensor, W</td><td>Required.</td></tr>
+  <tr><td>House consumption sensor, W</td><td>Required. Ideally excluding the devices you plan to steer.</td></tr>
+  <tr><td>Grid power sensor, W, + = import</td><td>Required.</td></tr>
+  <tr><td>A state-of-charge sensor per battery, %</td><td>Only if you have batteries.</td></tr>
+  <tr><td>A script per steerable device</td><td>Not needed on day one — observer mode calls nothing.</td></tr>
+</table>
+</div>
+
+<h2>Install via HACS</h2>
+
+<p>Once the repository is in the HACS default store:</p>
+
+<ol>
+  <li>HACS → <strong>Integrations</strong> → search for <strong>Energy Balancer</strong>.</li>
+  <li>Download, then restart Home Assistant.</li>
+  <li><em>Settings → Devices &amp; services → Add integration</em> → <strong>Energy Balancer</strong>.</li>
+</ol>
+
+<h3>As a custom repository</h3>
+
+<p>Before it is accepted into the default store, add it by hand:</p>
+
+<ol>
+  <li>HACS → ⋮ (top right) → <strong>Custom repositories</strong>.</li>
+  <li>URL: <code>https://github.com/jebeke65/ha-energy-balancer</code>, category
+      <strong>Integration</strong>.</li>
+  <li>Add, then download it from the HACS list as usual, and restart.</li>
+</ol>
+
+<h2>Manual install</h2>
+
+<ol>
+  <li>Download the latest release.</li>
+  <li>Copy <code>custom_components/energy_balancer/</code> into your Home Assistant
+      <code>config/custom_components/</code> directory.</li>
+  <li>Restart Home Assistant.</li>
+  <li>Add the integration from <em>Settings → Devices &amp; services</em>.</li>
+</ol>
+
+<h2>First run</h2>
+
+<h3>1. The system screen</h3>
+<p>
+  Point at your three required sensors. Everything else on that screen can wait — see
+  <a href="configuration.html">Configuration</a> for what each field does.
+</p>
+<p>
+  <strong>Leave observer mode on.</strong> It is on by default, and it means the
+  integration will compute everything and touch nothing.
+</p>
+
+<h3>2. Add your cells</h3>
+<p>
+  Add one cell per steerable device. For a first run, give each one its
+  <code>position</code>, <code>type</code>, capacity, state-of-charge sensor and power
+  sensor, and leave the actuator empty. See <a href="cells.html">Cells</a>.
+</p>
+
+<h3>3. Watch it for a day</h3>
+<p>Compare against what you already know:</p>
+<ul>
+  <li><code>sensor.eb_house</code> against your own consumption figure.</li>
+  <li><code>sensor.eb_net</code> against your meter — including the sign.</li>
+  <li>Each cell's power sensor against its vendor app.</li>
+  <li><code>sensor.eb_status</code> for the chain's own summary.</li>
+</ul>
+
+<div class="warn">
+  <p>
+    If the grid sign is inverted, everything downstream is quietly wrong: surplus reads
+    as deficit and the chain will try to charge when it should discharge. Check this
+    first, and fix it in a template sensor rather than compensating elsewhere.
+  </p>
+</div>
+
+<h3>4. Write the actuator scripts</h3>
+<p>
+  One script per device, taking a direction and a power figure. Everything
+  vendor-specific belongs here and nowhere else. Fill in the actuator service on each
+  cell once the script exists.
+</p>
+
+<h3>5. Go live</h3>
+<p>
+  Turn off <code>switch.eb_observer_mode</code>. Watch the grid sensor for the next few
+  minutes: the most common first-day fault is an actuator script that reacts in the
+  wrong direction, and that shows up immediately as the grid swinging instead of
+  settling.
+</p>
+
+<div class="note">
+  <p>
+    You can turn observer mode back on at any moment, from the switch or from the
+    options flow. The two stay in sync.
+  </p>
+</div>
+
+<h2>Upgrading</h2>
+
+<p>
+  Config entries are migrated automatically. Two migrations exist so far: one that
+  rewrote the cell mode vocabulary, and one that adopted entity wiring from an older
+  YAML setup. Both are idempotent, and neither touches a number you have changed
+  yourself — a slider you moved survives an upgrade.
+</p>
+
+<footer class="foot">
+  Next: <a href="configuration.html">Configuration</a> · <a href="cells.html">Cells</a>
+</footer>
+
+</div>
+</body>
+</html>

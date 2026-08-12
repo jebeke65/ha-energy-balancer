@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Energy Balancer — documentation</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="masthead">
+  <div class="wrap">
+    <a class="title" href="index.html">Energy Balancer <span class="sub">for Home Assistant</span></a>
+    <nav class="top">
+      <a href="index.html" aria-current="page">Overview</a>
+      <a href="concepts.html">Concepts</a>
+      <a href="installation.html">Installation</a>
+      <a href="configuration.html">Configuration</a>
+      <a href="cells.html">Cells</a>
+      <a href="entities.html">Entities</a>
+      <a href="services.html">Services</a>
+      <a href="dashboard.html">Dashboard</a>
+      <a href="troubleshooting.html">Troubleshooting</a>
+    </nav>
+  </div>
+</header>
+
+<div class="wrap">
+
+<h1>What Energy Balancer does</h1>
+<p class="lead">
+  It decides, several times a minute, which of your energy devices should take the
+  next available watt — and which should give one back.
+</p>
+
+<p>
+  A house with solar panels, one or two batteries and a car charger has a scheduling
+  problem. The sun produces a surplus that has to go somewhere. The house draws a
+  load that has to come from somewhere. Each device has its own app, its own idea of
+  "self-consumption", and no knowledge of the others. Left alone they compete: the
+  car charger and the battery both grab the same surplus, and at dusk both discharge
+  into a house that only needs one of them.
+</p>
+
+<p>
+  Energy Balancer puts those devices in a single line and gives them an order of
+  precedence. Every tick it works out how much surplus or deficit there is, walks the
+  line from front to back handing out what is left, and walks back handing out how
+  much room remains before the grid limit is hit. Each device then gets one
+  instruction: charge this much, discharge this much, hold, or regulate yourself.
+</p>
+
+<div class="chain">
+  <span class="cell">solar</span><span class="arrow">→</span>
+  <span class="cell">house</span><span class="arrow">→</span>
+  <span class="cell">car charger</span><span class="arrow">→</span>
+  <span class="cell">battery</span><span class="arrow">→</span>
+  <span class="cell">battery</span><span class="arrow">→</span>
+  <span class="cell">grid</span>
+</div>
+
+<h2>What it is not</h2>
+
+<p>
+  It is not a device integration. Energy Balancer never talks to an inverter, a
+  charger or a battery. It reads the sensors you already have and it calls the
+  scripts or services you already wrote. Everything vendor-specific stays on your
+  side of the line, which is why it works with hardware the author has never seen.
+</p>
+
+<p>
+  It is also not a scheduler or a tariff optimiser. It has no clock and no price
+  curve of its own. It answers one question — <em>where does this watt go right
+  now</em> — and it answers it from measurements, not from a plan.
+</p>
+
+<h2>The three ideas worth understanding</h2>
+
+<h3>1. A chain, not a controller</h3>
+<p>
+  Devices are modelled as <strong>cells</strong> in a chain. A cell sees only its two
+  neighbours: what the cell before it left over, and how much room the cell after it
+  still has. There is no global state and no central optimiser. Add a cell, remove a
+  cell, reorder them — nothing else has to change.
+</p>
+
+<h3>2. Position is priority, and equal position means a pool</h3>
+<p>
+  Each cell has a position number. Lower gets served first. Give two cells the
+  <em>same</em> position and they stop competing: they become a single pool with one
+  shared state of charge target, and whatever the pool is told to do is split
+  between them in proportion to how much room each one still has.
+</p>
+
+<h3>3. Mode and action are different things</h3>
+<p>
+  The <strong>mode</strong> is the policy you choose — may this cell charge from the
+  grid, only from surplus, or should it be left alone entirely. The
+  <strong>action</strong> is what the hardware is measured to be doing right now.
+  They are independent, and every combination is meaningful. A cell can be set to
+  <code>autonomous</code> and still be observed to discharge; that is not a
+  contradiction, it is the whole point.
+</p>
+
+<div class="note">
+  <p>
+    <strong>Start here if you are installing:</strong>
+    <a href="installation.html">Installation</a> →
+    <a href="configuration.html">Configuration</a> →
+    <a href="cells.html">Cells</a>.
+    Leave <em>observer mode</em> switched on until the numbers look right; the
+    integration will compute and publish everything without touching a single device.
+  </p>
+</div>
+
+<h2>Documentation</h2>
+
+<div class="cards">
+  <a href="concepts.html">
+    <strong>Concepts</strong>
+    <span>The chain, cells, pools, modes and actions, observer mode, the vocabulary.</span>
+  </a>
+  <a href="installation.html">
+    <strong>Installation</strong>
+    <span>HACS and manual install, requirements, first run.</span>
+  </a>
+  <a href="configuration.html">
+    <strong>Configuration</strong>
+    <span>Every system-level input in the setup wizard, with ranges and defaults.</span>
+  </a>
+  <a href="cells.html">
+    <strong>Cells</strong>
+    <span>Cell by cell: solar, house, grid, home battery, car charger. Hardware, algorithm, actuator.</span>
+  </a>
+  <a href="entities.html">
+    <strong>Devices &amp; entities</strong>
+    <span>What the integration creates and what each entity means.</span>
+  </a>
+  <a href="services.html">
+    <strong>Services</strong>
+    <span><code>generate_dashboard</code> and <code>set_option</code>.</span>
+  </a>
+  <a href="dashboard.html">
+    <strong>Dashboard</strong>
+    <span>The bundled Lovelace cards and how they are installed.</span>
+  </a>
+  <a href="troubleshooting.html">
+    <strong>Troubleshooting</strong>
+    <span>Nothing charges, nothing actuates, values look wrong.</span>
+  </a>
+</div>
+
+<h2>Requirements</h2>
+
+<div class="table-scroll">
+<table>
+  <tr><th>What</th><th>Why</th></tr>
+  <tr>
+    <td>Home Assistant 2024.6.0 or newer</td>
+    <td>Config-entry migrations and the selector API used by the setup wizard.</td>
+  </tr>
+  <tr>
+    <td>A solar production sensor, in&nbsp;W</td>
+    <td>Required. Without it there is no surplus to distribute.</td>
+  </tr>
+  <tr>
+    <td>A house consumption sensor, in&nbsp;W</td>
+    <td>Required.</td>
+  </tr>
+  <tr>
+    <td>A grid power sensor, in&nbsp;W (+ = import)</td>
+    <td>Required. Also the basis for peak protection.</td>
+  </tr>
+  <tr>
+    <td>One script or service per steerable device</td>
+    <td>Optional at first — in observer mode nothing is called at all.</td>
+  </tr>
+</table>
+</div>
+
+<footer class="foot">
+  Energy Balancer is a custom integration for Home Assistant.
+  <a href="https://github.com/jebeke65/ha-energy-balancer">Source and issue tracker on GitHub</a>.
+</footer>
+
+</div>
+</body>
+</html>

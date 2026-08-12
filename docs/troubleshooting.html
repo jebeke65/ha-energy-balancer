@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Troubleshooting — Energy Balancer</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="masthead">
+  <div class="wrap">
+    <a class="title" href="index.html">Energy Balancer <span class="sub">for Home Assistant</span></a>
+    <nav class="top">
+      <a href="index.html">Overview</a>
+      <a href="concepts.html">Concepts</a>
+      <a href="installation.html">Installation</a>
+      <a href="configuration.html">Configuration</a>
+      <a href="cells.html">Cells</a>
+      <a href="entities.html">Entities</a>
+      <a href="services.html">Services</a>
+      <a href="dashboard.html">Dashboard</a>
+      <a href="troubleshooting.html" aria-current="page">Troubleshooting</a>
+    </nav>
+  </div>
+</header>
+
+<div class="wrap">
+
+<h1>Troubleshooting</h1>
+<p class="lead">
+  Start with the three checks below. They account for most of what looks like a bug.
+</p>
+
+<h2>The first three checks</h2>
+
+<ol>
+  <li>
+    <strong>Is observer mode still on?</strong> <code>switch.eb_observer_mode</code>.
+    It is on by default and it means nothing is actuated. This is the single most
+    common cause of "it computes but does nothing".
+  </li>
+  <li>
+    <strong>Are all sensors available?</strong>
+    <code>sensor.eb_diag_sensors_unavailable</code> should read zero. Anything else and
+    the chain is working with holes in its inputs.
+  </li>
+  <li>
+    <strong>Is the grid sign right?</strong> <code>sensor.eb_diag_grid_sign</code>.
+    Import must be positive. Get this wrong and surplus reads as deficit — the chain
+    will charge when it should discharge, and every other symptom follows from it.
+  </li>
+</ol>
+
+<h2>Nothing is being actuated</h2>
+
+<div class="table-scroll">
+<table>
+  <tr><th>Check</th><th>Expected</th></tr>
+  <tr><td>Observer mode</td><td>Off.</td></tr>
+  <tr><td>The cell's actuator service</td><td>Filled in. Empty means observe only.</td></tr>
+  <tr><td>The named script</td><td>Exists, and runs cleanly when you call it by hand.</td></tr>
+  <tr><td>Cell mode</td><td>Not <code>off</code> or <code>autonomous</code> — both mean "send nothing", on purpose.</td></tr>
+</table>
+</div>
+
+<h2>A battery will not charge</h2>
+
+<div class="table-scroll">
+<table>
+  <tr><th>Cause</th><th>How to see it</th></tr>
+  <tr><td>Already at <code>max_soc</code></td><td>Compare its state of charge to the configured ceiling. The taper eases charging off before the limit, so it slows down first.</td></tr>
+  <tr><td>No surplus, and the mode is <code>surplus</code></td><td><code>sensor.eb_surplus_total_w</code>. In <code>surplus</code> mode a battery is not supposed to import.</td></tr>
+  <tr><td>No peak headroom</td><td><code>sensor.eb_current_vs_peak_percentage</code>. Charging is bounded by the import ceiling in every mode, forced ones included.</td></tr>
+  <tr><td>Below <code>charge_floor_w</code></td><td>The offered power is too small to be worth switching on for.</td></tr>
+  <tr><td><code>take_pct</code> at zero</td><td>Check the slider, and check the entity behind it if it points at one.</td></tr>
+  <tr><td>An external charge policy says no</td><td>Look at the <code>mode</code> attribute of your <code>charge_pct_sensor</code> and its stated reason.</td></tr>
+  <tr><td>The device did not obey</td><td>Compare its power sensor with the decision on <code>sensor.eb_&lt;cell&gt;</code>. If they disagree, the fault is in the actuator script or the device, not in the chain.</td></tr>
+</table>
+</div>
+
+<div class="danger">
+  <p>
+    <strong>A device stuck in a forced mode looks exactly like a working one.</strong>
+    If your actuator script puts hardware into a forced or manual state on the charge
+    path, every other path must be able to lift it again. When it cannot, the chain will
+    keep issuing correct decisions and the device will keep ignoring them — quietly,
+    with nothing in the log. Check the device's own mode registers before you suspect
+    the chain.
+  </p>
+</div>
+
+<h2>A battery will not discharge</h2>
+
+<div class="table-scroll">
+<table>
+  <tr><th>Cause</th><th>How to see it</th></tr>
+  <tr><td>At or below its floor</td><td>Compare against the pool target. Remember the floor is dynamic in <code>balanced</code> mode.</td></tr>
+  <tr><td>An interlock is active</td><td><code>no_discharge_on_flag</code> — usually the car charging. Modes do not override it.</td></tr>
+  <tr><td>There is no deficit</td><td>Nothing to discharge into.</td></tr>
+  <tr><td><code>can_discharge</code> is false</td><td>Check the cell's hardware settings.</td></tr>
+</table>
+</div>
+
+<h2>The house imports while a battery is full</h2>
+
+<p>
+  Usually one of three things:
+</p>
+
+<ul>
+  <li>
+    <strong>A pool average hiding an empty member.</strong> A pool at 15% can be one
+    battery at 25% and one at 5%. The pool looks able; half of it is not. Check the
+    members individually.
+  </li>
+  <li>
+    <strong>"Do not charge" was executed as "do nothing".</strong> A zero from an
+    external charge policy means stop importing, not park the battery. If the actuator
+    script reads it as "stand still", the house ends up on the grid with storage
+    sitting idle beside it.
+  </li>
+  <li>
+    <strong>A leftover ceiling.</strong> If your script clamps a maximum power on the
+    charge path and never lifts it, the device's own regulator can never ramp past
+    whatever number was last written.
+  </li>
+</ul>
+
+<h2>Values look wrong</h2>
+
+<h3>House consumption too high</h3>
+<p>
+  Your house sensor probably includes a device that is also a cell, so it is counted
+  twice. List that entity under <code>house_includes</code> and it will be subtracted.
+</p>
+
+<h3>Everything reads zero or unavailable</h3>
+<p>
+  Check <code>sensor.eb_diag_sensors_unavailable</code>, then the log. Every rejected
+  parameter is logged once, by name, with the value that was rejected and the default
+  that replaced it.
+</p>
+
+<h3>Power flips sign</h3>
+<p>
+  Set <code>power_sign</code> to −1 on that cell. Do it there and nowhere else — a sign
+  corrected in two places is a sign that will eventually be wrong in one of them.
+</p>
+
+<h3>A slider does nothing</h3>
+<p>
+  The parameter is probably configured as an entity reference, which makes that entity
+  the single knob. Change the entity, not the slider. If a slider exists at all, the
+  value was numeric.
+</p>
+
+<h2>The pool split looks unfair</h2>
+
+<p>
+  It is weighted by <em>remaining room</em>: the distance from each cell's state of
+  charge to its ceiling, times its capacity in kWh. The emptiest and largest battery
+  takes the largest share. If the split looks wrong, check the configured capacities
+  first — an optimistic <code>capacity_kwh</code> skews every split it takes part in.
+</p>
+
+<h2>The pool broke apart</h2>
+
+<p>
+  Pooling requires <em>every</em> cell at that position to be in <code>surplus</code> or
+  <code>balanced</code>. Force one member to <code>charge</code> or
+  <code>discharge</code> and the pool dissolves; the members are handled one after
+  another instead. This is deliberate — a pool with a forced member is not a pool.
+</p>
+
+<h2>Turning on the logs</h2>
+
+<pre><code>logger:
+  default: warning
+  logs:
+    custom_components.energy_balancer: debug
+</code></pre>
+
+<p>
+  Every tick is then logged with its inputs, the decision per cell and the reason for
+  it. Turn it off again afterwards — ten-second ticks fill a log quickly.
+</p>
+
+<h2>Reporting a problem</h2>
+
+<p>
+  Open an issue at
+  <a href="https://github.com/jebeke65/ha-energy-balancer/issues">the issue tracker</a>
+  with:
+</p>
+
+<ul>
+  <li>Home Assistant and Energy Balancer versions.</li>
+  <li>Your cell setup: positions, modes, types.</li>
+  <li>The state and attributes of <code>sensor.eb_status</code> and of the cell
+      concerned.</li>
+  <li>What you expected, and what happened instead.</li>
+  <li>Debug log covering the moment it went wrong.</li>
+</ul>
+
+<footer class="foot">
+  Back to <a href="index.html">Overview</a>
+</footer>
+
+</div>
+</body>
+</html>

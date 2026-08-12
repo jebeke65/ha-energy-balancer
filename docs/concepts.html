@@ -1,0 +1,356 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Concepts — Energy Balancer</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="masthead">
+  <div class="wrap">
+    <a class="title" href="index.html">Energy Balancer <span class="sub">for Home Assistant</span></a>
+    <nav class="top">
+      <a href="index.html">Overview</a>
+      <a href="concepts.html" aria-current="page">Concepts</a>
+      <a href="installation.html">Installation</a>
+      <a href="configuration.html">Configuration</a>
+      <a href="cells.html">Cells</a>
+      <a href="entities.html">Entities</a>
+      <a href="services.html">Services</a>
+      <a href="dashboard.html">Dashboard</a>
+      <a href="troubleshooting.html">Troubleshooting</a>
+    </nav>
+  </div>
+</header>
+
+<div class="wrap">
+
+<h1>Concepts</h1>
+<p class="lead">
+  Six ideas hold the whole integration together. Read this page once and the rest of
+  the documentation stops being a list of settings.
+</p>
+
+<h2>The chain</h2>
+
+<p>
+  Every energy device in the house is a <strong>cell</strong>. Cells are lined up in a
+  chain, and the chain always ends at the grid.
+</p>
+
+<div class="chain">
+  <span class="cell">solar</span><span class="arrow">→</span>
+  <span class="cell">house</span><span class="arrow">→</span>
+  <span class="cell">car charger</span><span class="arrow">→</span>
+  <span class="cell">battery</span><span class="arrow">→</span>
+  <span class="cell">battery</span><span class="arrow">→</span>
+  <span class="cell">grid</span>
+</div>
+
+<p>
+  All cells share one interface: same inputs, same outputs. Solar is not a special
+  case in the code, and neither is the grid — they are simply cells whose behaviour
+  is fixed rather than configurable. That uniformity is why adding a heat pump or a
+  second charger later requires no changes to anything that already exists.
+</p>
+
+<p>
+  Each tick, the chain is walked twice.
+</p>
+
+<div class="table-scroll">
+<table>
+  <tr><th>Pass</th><th>Direction</th><th>Carries</th><th>Meaning</th></tr>
+  <tr>
+    <td>Downstream</td>
+    <td>solar → grid</td>
+    <td><code>rest</code> (W), <code>forecast</code> (Wh)</td>
+    <td>What is left over after everything before me has taken its share.</td>
+  </tr>
+  <tr>
+    <td>Upstream</td>
+    <td>grid → solar</td>
+    <td><code>headroom</code> (W), <code>current_power</code> (W)</td>
+    <td>How much room is left before the grid limit is hit.</td>
+  </tr>
+</table>
+</div>
+
+<p>
+  A cell sees only its two direct neighbours. There is no global state and no central
+  optimiser deciding everything at once.
+</p>
+
+<h3>Sign conventions</h3>
+<p>These never change, anywhere in the integration:</p>
+
+<div class="table-scroll">
+<table>
+  <tr><th>Quantity</th><th>Positive</th><th>Negative</th></tr>
+  <tr><td><code>rest</code></td><td>surplus available</td><td>deficit to cover</td></tr>
+  <tr><td>cell <code>power</code></td><td>charging — takes from the chain</td><td>discharging — gives to the chain</td></tr>
+  <tr><td><code>grid</code></td><td>import</td><td>export</td></tr>
+</table>
+</div>
+
+<div class="warn">
+  <p>
+    If your grid sensor reports import as negative, do not invert it in the integration —
+    invert it in a template sensor and point Energy Balancer at that. Half the confusing
+    behaviour reported against tools like this one comes from a sign that is wrong in
+    one place and right in another.
+  </p>
+</div>
+
+<h2>Position is priority</h2>
+
+<p>
+  Every cell has a <code>position</code>: a small integer that decides where it sits in
+  the chain. Lower numbers are served first. Solar, house and grid occupy fixed
+  positions; your own devices go in between, and the order you choose <em>is</em> the
+  policy.
+</p>
+
+<p>
+  Put the car charger before the home battery and surplus fills the car first. Swap
+  them and the battery fills first, and the car only gets what is left over. There is
+  no separate priority setting — position is it.
+</p>
+
+<h2>Equal position means a pool</h2>
+
+<p>
+  Give two cells the <strong>same</strong> position and they stop being competitors.
+  They become one <strong>pool</strong> (also called a layer or tier): a single virtual
+  battery with one shared state of charge, one shared target, and one decision.
+</p>
+
+<p>
+  Whatever the pool is told to do is split between its members
+  <strong>in proportion to how much room each one still has</strong> — remaining
+  capacity, being the distance from the current state of charge to its maximum,
+  multiplied by the cell's capacity in kWh. The battery that is emptiest, and biggest,
+  takes the largest share.
+</p>
+
+<div class="note">
+  <p>
+    Pooling only happens when <em>every</em> cell at that position is in
+    <code>surplus</code> or <code>balanced</code> mode. Force one member to
+    <code>charge</code> and the pool dissolves: the members fall back to being handled
+    one after the other, in the plain chain order. A pool with a forced member is not a
+    pool any more.
+  </p>
+</div>
+
+<h2>Mode and action are separate</h2>
+
+<p>
+  This is the distinction that everything else depends on.
+</p>
+
+<div class="table-scroll">
+<table>
+  <tr><th></th><th>Mode</th><th>Action</th></tr>
+  <tr><td>Is</td><td>the policy you choose</td><td>what the hardware is doing</td></tr>
+  <tr><td>Comes from</td><td>configuration</td><td>measurement</td></tr>
+  <tr><td>Answers</td><td>"what is this cell allowed to do?"</td><td>"what is it doing right now?"</td></tr>
+  <tr><td>Changes when</td><td>you change it</td><td>the world changes</td></tr>
+</table>
+</div>
+
+<p>
+  Every combination is valid and meaningful. A cell set to <code>autonomous</code> —
+  meaning Energy Balancer keeps its hands off entirely — can still be observed to
+  discharge 200&nbsp;W. That is not a contradiction; there is no command to display,
+  so the only honest thing to show is the measurement.
+</p>
+
+<h3>Structural modes</h3>
+<p>Set by the integration, not configurable:</p>
+
+<div class="table-scroll">
+<table>
+  <tr><th>Mode</th><th>Cell</th><th>Behaviour</th></tr>
+  <tr><td><code>supply</code></td><td>solar</td><td>Adds its measured power to <code>rest</code>.</td></tr>
+  <tr><td><code>demand</code></td><td>house</td><td>Subtracts its measured power from <code>rest</code>.</td></tr>
+  <tr><td><code>grid</code></td><td>net</td><td>Absorbs whatever remains, bounded by the import limit.</td></tr>
+</table>
+</div>
+
+<h3>Configurable modes</h3>
+<p>Chosen per cell, in the setup wizard or the options flow:</p>
+
+<div class="table-scroll">
+<table>
+  <tr><th>Mode</th><th>Meaning</th></tr>
+  <tr>
+    <td><code>surplus</code></td>
+    <td>Charge only when there is a surplus; discharge when there is a deficit.
+        The everyday self-consumption behaviour.</td>
+  </tr>
+  <tr>
+    <td><code>balanced</code></td>
+    <td>Charge or discharge against a dynamic target state of charge, derived from the
+        solar forecast and recent consumption, with hysteresis so it does not
+        oscillate around the target.</td>
+  </tr>
+  <tr>
+    <td><code>charge</code></td>
+    <td>Forced charging, from the grid if necessary.</td>
+  </tr>
+  <tr>
+    <td><code>discharge</code></td>
+    <td>Forced discharging, even while there is a surplus.</td>
+  </tr>
+  <tr>
+    <td><code>autonomous</code></td>
+    <td>The cell governs itself. Energy Balancer measures it and accounts for it in the
+        chain, but sends it nothing.</td>
+  </tr>
+  <tr>
+    <td><code>off</code></td>
+    <td>Not steered. Still measured, and its measured power still affects
+        <code>rest</code> — an unsteered load is real.</td>
+  </tr>
+</table>
+</div>
+
+<div class="warn">
+  <p><strong>What a forced mode may never override.</strong> <code>charge</code> and
+  <code>discharge</code> are strong, not absolute. They remain bounded by:</p>
+  <ul>
+    <li><strong>Peak headroom.</strong> A forced charge is limited to
+        <code>rest + headroom</code>, so it cannot quietly push your monthly peak up.</li>
+    <li><strong>The state-of-charge limits</strong> and their tapers, and
+        <code>take_pct</code>.</li>
+    <li><strong><code>no_discharge_on_flag</code></strong>, which is a safety
+        interlock — for instance "never empty the house battery into the car" — not a
+        preference a mode gets to ignore.</li>
+  </ul>
+</div>
+
+<h3>Legacy spellings</h3>
+<p>
+  Two modes were renamed. <code>self_consumption</code> became <code>surplus</code>
+  because it was a vendor's word for a work mode, not a description of behaviour;
+  <code>smart</code> became <code>balanced</code> because it said nothing at all.
+  Stored configurations holding the old names still load — they are translated on the
+  way in — so nothing breaks on upgrade.
+</p>
+
+<h2>What actually reaches the hardware</h2>
+
+<p>
+  The chain produces a decision, and the decision is deliberately tiny. Modes never
+  reach your devices; the actuator does not need to know whether you chose
+  <code>balanced</code> or <code>surplus</code>.
+</p>
+
+<div class="table-scroll">
+<table>
+  <tr><th>Decision</th><th>Means</th></tr>
+  <tr><td>steer, power &gt; 0</td><td>charge at this many watts</td></tr>
+  <tr><td>steer, power &lt; 0</td><td>discharge at this many watts</td></tr>
+  <tr><td>steer, power = 0</td><td>hold — actively do nothing</td></tr>
+  <tr><td>release</td><td>let go; the cell regulates itself</td></tr>
+  <tr><td>stop</td><td>take no part</td></tr>
+</table>
+</div>
+
+<div class="danger">
+  <p>
+    <strong>Hold and release are not the same thing</strong>, and on real hardware they
+    are physically different states. "Hold" means the battery is actively pinned at
+    zero. "Release" means its own regulator has the wheel back. Collapsing the two is
+    the single most expensive mistake you can make in an actuator script: a battery
+    told to release when it should hold will happily start charging from the grid.
+  </p>
+</div>
+
+<h2>Observer mode</h2>
+
+<p>
+  With observer mode on — and it is <strong>on by default</strong> — the integration
+  does everything except act. It reads sensors, runs the chain, publishes every
+  entity, and calls nothing.
+</p>
+
+<p>
+  Leave it on for the first day. Watch whether the numbers match what your inverter
+  app says. Only then turn it off. There is a switch,
+  <code>switch.eb_observer_mode</code>, so you can flip it back the moment something
+  looks wrong.
+</p>
+
+<h2>Peak protection</h2>
+
+<p>
+  Many grid tariffs charge on the highest quarter-hour import of the month, which means
+  a single careless moment sets a price you pay for a long time.
+</p>
+
+<p>
+  Energy Balancer treats the import limit as the chain's upper bound. It is the
+  <code>headroom</code> that travels back up the chain, and it caps every cell's charge
+  decision — including the forced ones. Supply the limit as a fixed number
+  (<code>peak_limit_w</code>), or point at one or more sensors and the highest value
+  wins.
+</p>
+
+<div class="note">
+  <p>
+    Pointing at your own running monthly-peak sensor is a common pattern: once the peak
+    for the month is already set, there is no reason to stay below it, so the limit
+    follows it upward. Be aware of the consequence — the ceiling rises with the peak,
+    so anything that guards against exceeding it starts guarding a higher number.
+  </p>
+</div>
+
+<h2>An external charge policy</h2>
+
+<p>
+  Some setups already have something deciding <em>whether</em> the batteries should be
+  charging — a tariff optimiser, a scheduler, a script of your own. Energy Balancer can
+  defer to it instead of duplicating it.
+</p>
+
+<p>
+  Point <code>charge_pct_sensor</code> at a sensor whose state is a percentage and whose
+  <code>mode</code> attribute carries the intent. The percentage alone is ambiguous:
+  zero can mean "no room in the peak window", "my inputs dropped out" or "let go", and
+  those demand different responses. The mode attribute disambiguates it.
+</p>
+
+<div class="table-scroll">
+<table>
+  <tr><th>mode attribute</th><th>state</th><th>Understood as</th></tr>
+  <tr><td><code>eco_charge</code></td><td>&gt; 0</td><td>Charge, at this percentage of the pool's charge capacity.</td></tr>
+  <tr><td><code>eco_charge</code></td><td>0</td><td>Do not pull from the grid — but keep covering the house.</td></tr>
+  <tr><td><code>general</code></td><td>anything</td><td>Hands off; the cells regulate themselves.</td></tr>
+  <tr><td>anything else</td><td>anything</td><td>No external policy; Energy Balancer uses its own logic.</td></tr>
+</table>
+</div>
+
+<div class="danger">
+  <p>
+    <strong>"Do not charge" is not "do nothing".</strong> A zero from the external
+    policy means <em>stop importing</em>, never <em>park the battery</em>. Covering the
+    house from storage is a separate decision. An actuator script that reads zero as
+    "stand still" will leave the house drawing from the grid with a full battery
+    sitting next to it — which is exactly the situation peak protection exists to
+    prevent.
+  </p>
+</div>
+
+<footer class="foot">
+  Next: <a href="installation.html">Installation</a> ·
+  <a href="configuration.html">Configuration</a> ·
+  <a href="cells.html">Cells</a>
+</footer>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,182 @@
+{
+  "config": {
+    "step": {
+      "system": {
+        "title": "Energy Balancer — system sensors",
+        "description": "The chain inputs. Solar, house and grid are required; forecast and the charge-% sensor are optional.",
+        "data": {
+          "solar_sensor": "Solar production (W)",
+          "house_sensor": "House consumption (W)",
+          "grid_sensor": "Grid power (W, + = import)",
+          "forecast_sensor": "Solar forecast remaining today (kWh)",
+          "charge_pct_sensor": "External pool charge % (optional)",
+          "peak_limit_w": "Peak import limit fallback (W)",
+          "peak_limit_sensors": "Peak limit sensors (max is used)",
+          "update_interval_seconds": "Update interval (s)",
+          "observer_mode": "Observer mode (no actuation)"
+        }
+      },
+      "cells": {
+        "title": "Energy Balancer — cells",
+        "description": "Add, edit or finish. Configured cells: {count}.",
+        "data": {
+          "cell": "Cell"
+        }
+      },
+      "cell": {
+        "title": "Cell: {cell}",
+        "description": "Hardware and algorithm settings for this cell.",
+        "data": {
+          "id": "Cell id",
+          "position": "Position (priority; same = pool)",
+          "mode": "Mode",
+          "type": "Type",
+          "can_charge": "Can charge",
+          "can_discharge": "Can discharge",
+          "max_charge_w": "Max charge (W)",
+          "max_discharge_w": "Max discharge (W)",
+          "capacity_kwh": "Capacity (kWh)",
+          "min_soc": "Min SoC (%)",
+          "max_soc": "Max SoC (%)",
+          "power_sensor": "Power sensor",
+          "power_sign": "Power sign (1 or -1)",
+          "soc_sensor": "SoC sensor",
+          "energy_charged_sensor": "Energy charged sensor",
+          "energy_discharged_sensor": "Energy discharged sensor",
+          "take_pct": "Take % (entity id or constant)",
+          "hysteresis": "Hysteresis (%)",
+          "charge_floor_w": "Charge floor (W)",
+          "sunny_min_soc": "Sunny min SoC (%)",
+          "no_sun_min_soc": "No-sun min SoC (%)",
+          "pv_weight": "PV weight (entity id or constant)",
+          "connected_sensor": "Connected sensor",
+          "charging_sensor": "Charging sensor",
+          "charge_mode_entity": "Charge mode entity",
+          "set_flag_on_charge": "Set flag on charge",
+          "no_discharge_on_flag": "No discharge on flag",
+          "actuator_service": "Actuator service (blank = default script per cell)",
+          "actuator_unit": "Setpoint unit (W / A / %)",
+          "actuator_voltage": "Voltage (for A)",
+          "actuator_phases": "Phases (for A)"
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "Energy Balancer is already configured."
+    }
+  },
+  "options": {
+    "step": {
+      "system": {
+        "title": "Energy Balancer — system sensors",
+        "data": {
+          "solar_sensor": "Solar production (W)",
+          "house_sensor": "House consumption (W)",
+          "grid_sensor": "Grid power (W, + = import)",
+          "forecast_sensor": "Solar forecast remaining today (kWh)",
+          "charge_pct_sensor": "External pool charge % (optional)",
+          "peak_limit_w": "Peak import limit fallback (W)",
+          "peak_limit_sensors": "Peak limit sensors (max is used)",
+          "update_interval_seconds": "Update interval (s)",
+          "observer_mode": "Observer mode (no actuation)"
+        }
+      },
+      "cells": {
+        "title": "Energy Balancer — cells",
+        "description": "Pick a cell to edit, 🗑 to remove, add, or finish.",
+        "data": {
+          "cell": "Cell"
+        }
+      },
+      "cell": {
+        "title": "Edit cell",
+        "data": {
+          "id": "Cell id",
+          "position": "Position (priority; same = pool)",
+          "mode": "Mode",
+          "type": "Type",
+          "can_charge": "Can charge",
+          "can_discharge": "Can discharge",
+          "max_charge_w": "Max charge (W)",
+          "max_discharge_w": "Max discharge (W)",
+          "capacity_kwh": "Capacity (kWh)",
+          "min_soc": "Min SoC (%)",
+          "max_soc": "Max SoC (%)",
+          "power_sensor": "Power sensor",
+          "power_sign": "Power sign (1 or -1)",
+          "soc_sensor": "SoC sensor",
+          "energy_charged_sensor": "Energy charged sensor",
+          "energy_discharged_sensor": "Energy discharged sensor",
+          "take_pct": "Take % (entity id or constant)",
+          "hysteresis": "Hysteresis (%)",
+          "charge_floor_w": "Charge floor (W)",
+          "sunny_min_soc": "Sunny min SoC (%)",
+          "no_sun_min_soc": "No-sun min SoC (%)",
+          "pv_weight": "PV weight (entity id or constant)",
+          "connected_sensor": "Connected sensor",
+          "charging_sensor": "Charging sensor",
+          "charge_mode_entity": "Charge mode entity",
+          "set_flag_on_charge": "Set flag on charge",
+          "no_discharge_on_flag": "No discharge on flag",
+          "actuator_service": "Actuator service (blank = default script per cell)",
+          "actuator_unit": "Setpoint unit (W / A / %)",
+          "actuator_voltage": "Voltage (for A)",
+          "actuator_phases": "Phases (for A)"
+        }
+      }
+    }
+  },
+  "selector": {
+    "cell_mode": {
+      "options": {
+        "off": "Off",
+        "surplus": "Surplus only",
+        "balanced": "Balanced",
+        "charge": "Charge (forced)",
+        "discharge": "Discharge (forced)",
+        "autonomous": "Autonomous"
+      }
+    },
+    "cell_type": {
+      "options": {
+        "house_battery": "Home battery",
+        "car_charger": "Car charger",
+        "grid": "Grid"
+      }
+    }
+  },
+  "services": {
+    "generate_dashboard": {
+      "name": "Generate dashboard",
+      "description": "Builds an Energy Balancer dashboard from the current configuration and registers it with Home Assistant.",
+      "fields": {
+        "dashboard_title": {
+          "name": "Title",
+          "description": "Name shown in the sidebar."
+        },
+        "dashboard_path": {
+          "name": "URL path",
+          "description": "URL path. Must contain a hyphen."
+        }
+      }
+    },
+    "set_option": {
+      "name": "Set option",
+      "description": "Changes a live-tunable option. Applied to the running chain immediately and persisted into the config entry.",
+      "fields": {
+        "cell": {
+          "name": "Cell or pool",
+          "description": "Cell id, or a storage pool id to write the value to every member. Omit for a system-wide option."
+        },
+        "option": {
+          "name": "Option",
+          "description": "The parameter to change."
+        },
+        "value": {
+          "name": "Value",
+          "description": "A number, or an entity id to follow live."
+        }
+      }
+    }
+  }
+}

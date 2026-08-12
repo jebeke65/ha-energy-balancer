@@ -1,0 +1,315 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cells — Energy Balancer</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="masthead">
+  <div class="wrap">
+    <a class="title" href="index.html">Energy Balancer <span class="sub">for Home Assistant</span></a>
+    <nav class="top">
+      <a href="index.html">Overview</a>
+      <a href="concepts.html">Concepts</a>
+      <a href="installation.html">Installation</a>
+      <a href="configuration.html">Configuration</a>
+      <a href="cells.html" aria-current="page">Cells</a>
+      <a href="entities.html">Entities</a>
+      <a href="services.html">Services</a>
+      <a href="dashboard.html">Dashboard</a>
+      <a href="troubleshooting.html">Troubleshooting</a>
+    </nav>
+  </div>
+</header>
+
+<div class="wrap">
+
+<h1>Cells</h1>
+<p class="lead">
+  First the settings every cell shares, then each kind of cell in turn: solar, house,
+  grid, home battery, car charger.
+</p>
+
+<h2>The shape of a cell</h2>
+
+<p>
+  A cell has four groups of settings. The wizard shows them on one screen; conceptually
+  they answer four different questions.
+</p>
+
+<div class="table-scroll">
+<table>
+  <tr><th>Group</th><th>Answers</th></tr>
+  <tr><td>Top level</td><td>Where does it sit and what is it allowed to do?</td></tr>
+  <tr><td>Hardware</td><td>What are its physical limits and which sensors measure it?</td></tr>
+  <tr><td>Algorithm</td><td>How aggressively should it be used?</td></tr>
+  <tr><td>Actuator</td><td>How do I tell it what to do?</td></tr>
+</table>
+</div>
+
+<h3>Top level</h3>
+
+<div class="table-scroll">
+<table>
+  <tr><th>Setting</th><th>Default</th><th>Range</th><th>Meaning</th></tr>
+  <tr>
+    <td><code>id</code></td><td>—</td><td>text</td>
+    <td>Short name. Becomes part of every entity id for this cell, so choose it once and
+        keep it: <code>goodwe</code>, <code>car</code>, <code>marstek</code>.</td>
+  </tr>
+  <tr>
+    <td><code>position</code></td><td>2</td><td>0–99</td>
+    <td>Priority. Lower is served first. <strong>Equal position means the cells form a
+        pool.</strong></td>
+  </tr>
+  <tr>
+    <td><code>mode</code></td><td><code>off</code></td>
+    <td>off · surplus · balanced · charge · discharge · autonomous</td>
+    <td>The policy. See <a href="concepts.html">Concepts</a>.</td>
+  </tr>
+  <tr>
+    <td><code>type</code></td><td>empty</td>
+    <td>empty · house_battery · car_charger · grid</td>
+    <td>What kind of thing this is. Drives the dashboard grouping and a few
+        type-specific behaviours.</td>
+  </tr>
+</table>
+</div>
+
+<h3>Hardware</h3>
+
+<div class="table-scroll">
+<table>
+  <tr><th>Setting</th><th>Default</th><th>Range</th><th>Meaning</th></tr>
+  <tr><td><code>can_charge</code></td><td>true</td><td>yes/no</td>
+      <td>Whether this device can absorb energy at all.</td></tr>
+  <tr><td><code>can_discharge</code></td><td>true</td><td>yes/no</td>
+      <td>Whether it can give energy back. A car charger is normally
+          charge-only.</td></tr>
+  <tr><td><code>max_charge_w</code></td><td>5000</td><td>0–25000</td>
+      <td>Physical charge ceiling, in watts. Never exceeded, in any mode.</td></tr>
+  <tr><td><code>max_discharge_w</code></td><td>5000</td><td>0–25000</td>
+      <td>Physical discharge ceiling, in watts.</td></tr>
+  <tr><td><code>capacity_kwh</code></td><td>10</td><td>0–200</td>
+      <td>Usable capacity. Used for the pool split and for the energy accounting, so an
+          honest figure matters more than a datasheet one.</td></tr>
+  <tr><td><code>min_soc</code></td><td>10</td><td>0–100</td>
+      <td>Never discharge below this. The discharge taper starts easing off as the cell
+          approaches it, rather than slamming to zero.</td></tr>
+  <tr><td><code>max_soc</code></td><td>95</td><td>0–100</td>
+      <td>Never charge above this, with the same taper on the way up.</td></tr>
+  <tr><td><code>power_sensor</code></td><td>—</td><td>entity</td>
+      <td>Measured power for this cell, in watts.</td></tr>
+  <tr><td><code>power_sign</code></td><td>1</td><td>1 or −1</td>
+      <td>Set to −1 if your sensor reports charging as negative. This is the one place
+          a sign may be flipped, precisely so it does not have to be flipped
+          elsewhere.</td></tr>
+  <tr><td><code>soc_sensor</code></td><td>—</td><td>entity</td>
+      <td>State of charge, in percent. Required for anything storage-like.</td></tr>
+  <tr><td><code>energy_charged_sensor</code></td><td>—</td><td>entity</td>
+      <td>Lifetime charged energy in kWh, for the accounting totals.</td></tr>
+  <tr><td><code>energy_discharged_sensor</code></td><td>—</td><td>entity</td>
+      <td>Lifetime discharged energy in kWh.</td></tr>
+  <tr><td><code>self_consumption_w</code></td><td>0</td><td>0–5000</td>
+      <td>Standing draw of the device itself — inverter idle load, charger standby.
+          Accepts an entity id.</td></tr>
+</table>
+</div>
+
+<div class="warn">
+  <p>
+    Set <code>min_soc</code> at or above <code>max_soc</code> and the pair is rejected
+    and reset to 10/95, with a warning in the log. An inverted band would break both
+    tapers, so it is not allowed to stand.
+  </p>
+</div>
+
+<h3>Algorithm</h3>
+
+<div class="table-scroll">
+<table>
+  <tr><th>Setting</th><th>Default</th><th>Range</th><th>Meaning</th></tr>
+  <tr><td><code>take_pct</code></td><td>100</td><td>0–100</td>
+      <td>How much of what this cell is offered it may actually take. The main dial for
+          sharing surplus between competing devices. Accepts an entity id.</td></tr>
+  <tr><td><code>hysteresis</code></td><td>3</td><td>0–50</td>
+      <td>Dead band around the target state of charge, in percent, so the cell does not
+          flip between charging and discharging at the boundary.</td></tr>
+  <tr><td><code>charge_floor_w</code></td><td>0</td><td>0–10000</td>
+      <td>Below this many watts, do not bother charging. Stops a device being switched
+          on for a trickle it cannot use efficiently.</td></tr>
+  <tr><td><code>min_soc_mode</code></td><td><code>balanced</code></td>
+      <td>balanced · manual</td>
+      <td><strong>balanced</strong> runs the floor algorithm with its safeguards.
+          <strong>manual</strong> takes <code>manual_min_soc</code> verbatim, which is
+          how you deliberately go lower than the safeguards would allow.</td></tr>
+  <tr><td><code>sunny_min_soc</code></td><td>25</td><td>0–100</td>
+      <td>Floor to hold when a good solar day is expected. Lower, because the sun will
+          refill it.</td></tr>
+  <tr><td><code>no_sun_min_soc</code></td><td>40</td><td>0–100</td>
+      <td>Floor to hold when little sun is expected. Higher, because it will not.</td></tr>
+  <tr><td><code>manual_min_soc</code></td><td>15</td><td>0–100</td>
+      <td>The verbatim floor, used only when <code>min_soc_mode</code> is
+          <code>manual</code>.</td></tr>
+  <tr><td><code>pv_weight</code></td><td>0</td><td>0–100</td>
+      <td>This cell's share of the PV array, when several cells sit behind different
+          strings. Normalised across cells.</td></tr>
+  <tr><td><code>target_soc</code></td><td>—</td><td>0–100</td>
+      <td>Fixed target instead of a computed one. Leave empty to let the algorithm
+          decide.</td></tr>
+  <tr><td><code>connected_sensor</code></td><td>—</td><td>entity</td>
+      <td>Is the device physically connected? A car charger with no car should not be
+          offered surplus.</td></tr>
+  <tr><td><code>charging_sensor</code></td><td>—</td><td>entity</td>
+      <td>Is it actually drawing? Validating against delivered current rather than a
+          reported status catches chargers that claim to be charging while delivering
+          nothing.</td></tr>
+  <tr><td><code>charge_mode_entity</code></td><td>—</td><td>entity</td>
+      <td>An entity carrying the device's own charge mode, when it has one.</td></tr>
+  <tr><td><code>set_flag_on_charge</code></td><td>empty</td><td>entity id</td>
+      <td>A flag to raise while this cell is charging. The other half of the interlock
+          below.</td></tr>
+  <tr><td><code>no_discharge_on_flag</code></td><td>empty</td><td>entity id</td>
+      <td>Do not discharge while that flag is on. The classic use: the car raises a flag
+          while charging, and the house battery refuses to discharge into it.</td></tr>
+</table>
+</div>
+
+<div class="note">
+  <p>
+    <code>no_discharge_on_flag</code> is an interlock, not a preference.
+    <code>discharge</code> mode does not override it.
+  </p>
+</div>
+
+<h3>Actuator</h3>
+
+<p>
+  This is the seam between Energy Balancer and your hardware. The integration hands over
+  a direction and a number; everything vendor-specific lives in the script you name here.
+</p>
+
+<div class="table-scroll">
+<table>
+  <tr><th>Setting</th><th>Default</th><th>Meaning</th></tr>
+  <tr><td><code>service</code></td><td>empty</td>
+      <td>The script or service to call, for example
+          <code>script.eb_actuator_goodwe</code>. Leave empty and the cell is observed
+          but never steered.</td></tr>
+  <tr><td><code>unit</code></td><td>W</td>
+      <td>What your device expects: <code>W</code>, <code>A</code> or
+          <code>pct</code>. Conversion is done for you.</td></tr>
+  <tr><td><code>voltage</code></td><td>230</td>
+      <td>Used for the watts-to-amps conversion. Range 100–400.</td></tr>
+  <tr><td><code>phases</code></td><td>1</td>
+      <td>1 or 3. Also used for the amps conversion.</td></tr>
+</table>
+</div>
+
+<div class="danger">
+  <p>
+    <strong>Write your actuator script so every path leaves the device in a known
+    state.</strong> If one branch puts the hardware into a forced mode, every other
+    branch must be able to lift it. A script that forces on the charge path but does not
+    release on the discharge path leaves the device stuck the moment the decision
+    changes — and it will look, from the integration's side, exactly like it worked.
+  </p>
+</div>
+
+<h2>Cell by cell</h2>
+
+<h3>Solar</h3>
+<p>
+  Structural, mode <code>supply</code>. It contributes its measured production to
+  <code>rest</code> and takes nothing. There is nothing to configure beyond the
+  production sensor on the <a href="configuration.html">system screen</a>, and nothing
+  to actuate — you cannot tell the sun what to do.
+</p>
+<p>
+  It still gets its own device and entities, so production shows up in the chain view
+  and in the accounting like anything else.
+</p>
+
+<h3>House</h3>
+<p>
+  Structural, mode <code>demand</code>. It subtracts its measured consumption from
+  <code>rest</code>. This is the load nobody steers: lights, fridge, oven, everything
+  that simply happens.
+</p>
+<div class="warn">
+  <p>
+    Getting this figure right matters more than any tuning parameter. If it includes a
+    device that is also a cell, the chain double-counts and hands out surplus that was
+    already spent. Use <code>house_includes</code> to subtract the overlap.
+  </p>
+</div>
+
+<h3>Grid</h3>
+<p>
+  Structural, mode <code>grid</code>. Always last. It absorbs whatever the chain could
+  not place — exporting a surplus nobody wanted, importing a deficit nobody covered.
+</p>
+<p>
+  Its one constraint is the import limit, and that constraint is what travels back up
+  the chain as <code>headroom</code>. Everything upstream is bounded by it.
+</p>
+
+<h3>Home battery</h3>
+<p>
+  Type <code>house_battery</code>. The most configurable cell, and the one the pooling
+  logic exists for.
+</p>
+<h4>Typical settings</h4>
+<div class="table-scroll">
+<table>
+  <tr><td><code>position</code></td><td>The same on every battery you want pooled.</td></tr>
+  <tr><td><code>mode</code></td><td><code>balanced</code> for forecast-driven behaviour, <code>surplus</code> for plain self-consumption.</td></tr>
+  <tr><td><code>capacity_kwh</code></td><td>Honest usable capacity — this drives the pool split.</td></tr>
+  <tr><td><code>min_soc</code> / <code>max_soc</code></td><td>The physical band you are willing to use.</td></tr>
+  <tr><td><code>soc_sensor</code></td><td>Required. Without it the cell cannot participate in a pool.</td></tr>
+</table>
+</div>
+<p>
+  With two batteries at the same position, the state-of-charge target becomes a
+  capacity-weighted average across both, and per-cell targets stop being meaningful.
+  That is why the sliders for <code>sunny_min_soc</code>, <code>no_sun_min_soc</code>
+  and <code>manual_min_soc</code> become <strong>pool-level</strong>: one knob, written
+  to every member.
+</p>
+
+<h3>Car charger</h3>
+<p>
+  Type <code>car_charger</code>. Usually charge-only, and usually the cell whose
+  position you will move around the most.
+</p>
+<h4>Typical settings</h4>
+<div class="table-scroll">
+<table>
+  <tr><td><code>can_discharge</code></td><td><code>false</code>, unless you have bidirectional charging.</td></tr>
+  <tr><td><code>mode</code></td><td><code>surplus</code> — charge from what is left over.</td></tr>
+  <tr><td><code>charge_floor_w</code></td><td>Worth setting. Most chargers will not start below roughly 1.4&nbsp;kW anyway.</td></tr>
+  <tr><td><code>connected_sensor</code></td><td>So a charger with no car does not get offered surplus.</td></tr>
+  <tr><td><code>charging_sensor</code></td><td>Prefer one based on delivered current over one based on a reported status.</td></tr>
+  <tr><td><code>set_flag_on_charge</code></td><td>Raise a flag the house battery can refuse to discharge into.</td></tr>
+  <tr><td><code>actuator.unit</code></td><td>Often <code>A</code> — many chargers take amps, not watts.</td></tr>
+</table>
+</div>
+
+<div class="note">
+  <p>
+    Put the charger <em>before</em> the batteries and the car gets surplus first. Put it
+    <em>after</em> and the batteries fill first. Both are legitimate; the difference is
+    whether you would rather drive on sun or keep the house on sun after dark.
+  </p>
+</div>
+
+<footer class="foot">
+  Next: <a href="entities.html">Devices &amp; entities</a>
+</footer>
+
+</div>
+</body>
+</html>
