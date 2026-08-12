@@ -33,6 +33,12 @@ CARD_BUNDLE_URL = "/local/energy_balancer/eb-cards.js"
 CARD_BUNDLE_FILE = "www/energy_balancer/eb-cards.js"
 CHAIN_CARD_URL = "/local/energy_balancer/eb-chain-card-r2.js"
 CHAIN_CARD_FILE = "www/energy_balancer/eb-chain-card-r2.js"
+
+# Where the built cards ship inside the integration. They are copied into www/
+# on demand, because /local/ is the only path Home Assistant serves them from.
+CARD_SRC_DIR = os.path.join(os.path.dirname(__file__), "dashboard", "card", "dist")
+CARD_BUNDLE_SRC = os.path.join(CARD_SRC_DIR, "eb-cards.js")
+CHAIN_CARD_SRC = os.path.join(CARD_SRC_DIR, "eb-chain-card-r2.js")
 TEMPLATE_FILE = os.path.join(os.path.dirname(__file__), "dashboard", "eb_dashboard_template.yaml")
 
 CELL_NAMES = {"solar": "SOLAR", "house": "HOME", "car_charger": "CAR CHARGER",
@@ -214,12 +220,43 @@ def _load_template_sync() -> dict:
         return yaml.safe_load(f)
 
 
-def _bundle_version_sync(path: str) -> str:
+def _install_card_sync(src: str, dest: str) -> str:
+    """Put a bundled card into www/ and return its content hash.
+
+    The integration ships the built cards; www/ is the only place Home Assistant
+    serves them from, as /local/. Nothing used to perform this copy — the helper
+    that lived here only *read* www/ in order to hash it. That worked on the
+    development machine, where both files had been put there by hand, and left
+    every other installation registering a Lovelace resource pointing at a 404
+    with no card ever rendering and nothing in the log to say why.
+
+    Only writes when the destination is missing or its content differs, so an
+    unchanged card is not rewritten on every call. The returned hash is appended
+    to the resource URL, which is what stops a browser serving a stale bundle
+    after an upgrade.
+    """
     try:
-        with open(path, "rb") as f:
-            return hashlib.sha1(f.read()).hexdigest()[:8]
+        with open(src, "rb") as fh:
+            payload = fh.read()
     except OSError:
+        _LOGGER.warning(
+            "Bundled card missing from the integration: %s — its cards will not "
+            "render", src)
         return "0"
+
+    digest = hashlib.sha1(payload).hexdigest()[:8]
+    try:
+        with open(dest, "rb") as fh:
+            if fh.read() == payload:
+                return digest
+    except OSError:
+        pass  # missing or unreadable: fall through and write it
+
+    os.makedirs(os.path.dirname(dest), exist_ok=True)
+    with open(dest, "wb") as fh:
+        fh.write(payload)
+    _LOGGER.info("Installed card %s into %s", os.path.basename(src), dest)
+    return digest
 
 
 def _pick_weather_entity(hass: HomeAssistant):
@@ -283,9 +320,9 @@ async def async_generate_dashboard(
 ) -> bool:
     """Generate + register the EB dashboard. Returns True if it reloaded live."""
     bundle_v = await hass.async_add_executor_job(
-        _bundle_version_sync, hass.config.path(CARD_BUNDLE_FILE))
+        _install_card_sync, CARD_BUNDLE_SRC, hass.config.path(CARD_BUNDLE_FILE))
     chain_v = await hass.async_add_executor_job(
-        _bundle_version_sync, hass.config.path(CHAIN_CARD_FILE))
+        _install_card_sync, CHAIN_CARD_SRC, hass.config.path(CHAIN_CARD_FILE))
     await _register_resource(hass, CARD_BUNDLE_URL, bundle_v)
     await _register_resource(hass, CHAIN_CARD_URL, chain_v)
 

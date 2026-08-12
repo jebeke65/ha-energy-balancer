@@ -44,9 +44,12 @@ data:
 <p>Three things happen:</p>
 
 <ol>
-  <li>The card bundle is copied to <code>www/energy_balancer/eb-cards.js</code>.</li>
-  <li>It is registered as a Lovelace resource, with a content hash appended to the URL
-      so browsers cannot serve a stale copy.</li>
+  <li>The two card bundles that ship with the integration are copied into
+      <code>www/energy_balancer/</code> — <code>eb-cards.js</code> and
+      <code>eb-chain-card-r2.js</code>. They are only rewritten when their content has
+      actually changed.</li>
+  <li>Both are registered as Lovelace resources, with a content hash appended to the URL
+      so a browser cannot serve a stale copy after an upgrade.</li>
   <li>A dashboard is built from your actual cells and registered at the path you gave.</li>
 </ol>
 
