@@ -60,6 +60,24 @@
   <span class="cell">grid</span>
 </div>
 
+<p style="text-align:center; margin: 24px 0;">
+  <img src="images/chain.png" alt="The chain in Home Assistant: each cell with its measured power, the rest passed down and the headroom passed back up" style="max-width:100%; height:auto; border-radius:8px; border:1px solid var(--border);">
+</p>
+
+<p>
+  That screenshot is the whole idea. Solar produces 3428&nbsp;W and hands 3428&nbsp;W of
+  <strong>rest</strong> down the chain. The house takes 1596&nbsp;W and passes
+  1833&nbsp;W on. The car charger takes almost nothing. What survives reaches the two
+  batteries, which share a position and are therefore treated as one pool. Whatever
+  nobody wanted ends up at the grid — here, 156&nbsp;W exported.
+</p>
+
+<p>
+  Now read the right-hand column: <strong>3498&nbsp;W headroom</strong>, unchanged at
+  every step. That is your import limit travelling back up the chain, and it is what
+  none of these cells may cross.
+</p>
+
 <h2>What makes it different</h2>
 
 <p>
