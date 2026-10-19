@@ -42,7 +42,7 @@
 <table>
   <tr><th>Field</th><th>Required</th><th>Meaning</th></tr>
   <tr><td><code>option</code></td><td>yes</td><td>The parameter to change.</td></tr>
-  <tr><td><code>value</code></td><td>yes</td><td>A number, or an entity id to follow live.</td></tr>
+  <tr><td><code>value</code></td><td>yes</td><td>A number, a flag (<code>true</code>/<code>false</code>), a mode name, or an entity id to follow live. The value is converted to the option's own type and checked against its allowed choices.</td></tr>
   <tr><td><code>cell</code></td><td>no</td><td>Which cell — or which pool. Omit for a system-wide setting.</td></tr>
 </table>
 </div>
@@ -57,12 +57,18 @@
     <td><code>sunny_min_soc</code>, <code>no_sun_min_soc</code>,
         <code>hysteresis</code>, <code>charge_floor_w</code>, <code>take_pct</code>,
         <code>pv_weight</code>, <code>min_soc_mode</code>,
-        <code>manual_min_soc</code></td>
+        <code>manual_min_soc</code>; car brain: <code>use_car_brain</code>,
+        <code>car_mode</code>, <code>surplus_tier_soc</code>,
+        <code>start_margin_w</code>, <code>debounce_s</code>,
+        <code>solar_debounce_s</code>, <code>average_n</code></td>
   </tr>
   <tr>
     <td>System-wide (<code>cell</code> omitted)</td>
     <td><code>peak_limit_w</code>, <code>observer_mode</code>,
-        <code>import_price_per_kwh</code>, <code>export_price_per_kwh</code></td>
+        <code>import_price_per_kwh</code>, <code>export_price_per_kwh</code>,
+        <code>peak_max_w</code>, <code>block_demand_sensor</code>,
+        <code>month_peak_sensor</code>, <code>month_start_peak_policy</code>,
+        <code>month_start_window_min</code>, <code>month_end_window_min</code></td>
   </tr>
 </table>
 </div>
@@ -126,16 +132,18 @@ data:
 <h2><code>energy_balancer.generate_dashboard</code></h2>
 
 <p>
-  Builds a complete Energy Balancer dashboard from your actual configuration and
-  registers it with Home Assistant. Run it once after setup, and again whenever you add
-  or remove a cell.
+  Adds the Energy Balancer dashboard to the sidebar. <strong>Admin only.</strong> The
+  dashboard it creates contains nothing but the strategy
+  (<code>strategy: type: custom:energy-balancer</code>), so it follows your configuration
+  by itself; run the service once. See <a href="dashboard.html">Dashboard</a>.
 </p>
 
 <div class="table-scroll">
 <table>
   <tr><th>Field</th><th>Default</th><th>Meaning</th></tr>
   <tr><td><code>dashboard_title</code></td><td><code>Energy Balancer</code></td><td>The name shown in the sidebar.</td></tr>
-  <tr><td><code>dashboard_path</code></td><td><code>ebi-dashboard</code></td><td>URL path. <strong>Must contain a hyphen</strong> — Home Assistant requires it.</td></tr>
+  <tr><td><code>dashboard_path</code></td><td><code>energy-balancer</code></td><td>URL path. <strong>Must contain a hyphen</strong> — Home Assistant requires it.</td></tr>
+  <tr><td><code>dashboard_icon</code></td><td><code>mdi:scale-balance</code></td><td>Icon shown in the sidebar.</td></tr>
 </table>
 </div>
 
@@ -145,20 +153,12 @@ data:
   dashboard_path: energy-balancer
 </code></pre>
 
-<p>
-  The card bundle is copied into your <code>www/</code> folder and registered as a
-  Lovelace resource with a content hash appended, so an updated bundle is picked up
-  without anyone having to clear a browser cache.
-</p>
-
-<div class="warn">
+<div class="note">
   <p>
-    On a brand-new installation the dashboard may only appear after one restart —
-    Home Assistant has to notice the new registration. After that it updates live.
-  </p>
-  <p>
-    Re-running the service <strong>overwrites</strong> the dashboard at that path. If
-    you have customised it, generate to a different path or make a copy first.
+    The dashboard is created through Home Assistant's own dashboard management; no
+    storage file is written by the integration. A path that is already in use — by
+    another dashboard or any other panel — is refused, and that dashboard is left
+    untouched. Running the service again for a dashboard it created itself does nothing.
   </p>
 </div>
 

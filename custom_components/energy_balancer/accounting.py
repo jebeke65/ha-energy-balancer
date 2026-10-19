@@ -27,8 +27,13 @@ STORAGE_VERSION = 1
 # Never integrate over a longer gap than this (restart/downtime guard).
 MAX_TICK_GAP_S = 120.0
 
-PERIODS = ("daily", "monthly", "yearly")
+# "lifetime" is a period whose key never changes, so _rollover never empties it.
+# The energy dashboard wants a counter that only ever climbs (total_increasing);
+# the daily/monthly/yearly buckets reset and are published as `total` without a
+# last_reset, which HA reads as a real drop. Hence a bucket that never resets.
+PERIODS = ("daily", "monthly", "yearly", "lifetime")
 FIELDS = ("grid_import_energy", "grid_export_energy",
+          "solar_energy", "house_energy",
           "costs", "savings", "export_revenue", "battery_savings")
 
 
@@ -37,6 +42,7 @@ def _period_keys(now: datetime) -> dict:
         "daily": now.strftime("%Y-%m-%d"),
         "monthly": now.strftime("%Y-%m"),
         "yearly": now.strftime("%Y"),
+        "lifetime": "all",
     }
 
 
@@ -61,8 +67,12 @@ class EnergyAccounting:
     # ------------------------------------------------------------------ tick
     def tick(self, now: datetime, ts: float, grid_w: float, solar_w: float,
              battery_discharge_w: float, import_price: float,
-             export_price: float) -> None:
-        """Integrate one tick. ts = monotonic-ish epoch seconds."""
+             export_price: float, house_w: float = 0.0) -> None:
+        """Integrate one tick. ts = monotonic-ish epoch seconds.
+
+        house_w defaults to 0 so an older caller (and the tests) keep working;
+        it only ever adds to house_energy.
+        """
         self._rollover(now)
 
         if self._last_ts is None:
@@ -76,6 +86,10 @@ class EnergyAccounting:
         h = dt / 3600.0
         import_kwh = max(0.0, grid_w) / 1000.0 * h
         export_kwh = max(0.0, -grid_w) / 1000.0 * h
+        # Gross production and house draw — what the energy dashboard wants.
+        # Distinct from self_solar_kwh below, which is the savings figure.
+        solar_kwh = max(0.0, solar_w) / 1000.0 * h
+        house_kwh = max(0.0, house_w) / 1000.0 * h
         # Solar consumed on-site (production minus what is exported).
         self_solar_kwh = max(0.0, (solar_w / 1000.0 * h) - export_kwh)
         batt_kwh = max(0.0, battery_discharge_w) / 1000.0 * h
@@ -89,6 +103,8 @@ class EnergyAccounting:
             b = self.buckets[p]
             b["grid_import_energy"] += import_kwh
             b["grid_export_energy"] += export_kwh
+            b["solar_energy"] += solar_kwh
+            b["house_energy"] += house_kwh
             b["costs"] += d_costs
             b["savings"] += d_savings
             b["export_revenue"] += d_revenue

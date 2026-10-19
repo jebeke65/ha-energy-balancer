@@ -46,6 +46,7 @@
           "take_pct": "Take % (entity-id of constante)",
           "hysteresis": "Hysterese (%)",
           "charge_floor_w": "Laad-vloer (W)",
+          "surplus_tier_soc": "Surplus: auto laadt vanaf tier-% (%)",
           "sunny_min_soc": "Min SoC bij zon (%)",
           "no_sun_min_soc": "Min SoC zonder zon (%)",
           "pv_weight": "PV-gewicht (entity-id of constante)",
@@ -110,6 +111,7 @@
           "take_pct": "Take % (entity-id of constante)",
           "hysteresis": "Hysterese (%)",
           "charge_floor_w": "Laad-vloer (W)",
+          "surplus_tier_soc": "Surplus: auto laadt vanaf tier-% (%)",
           "sunny_min_soc": "Min SoC bij zon (%)",
           "no_sun_min_soc": "Min SoC zonder zon (%)",
           "pv_weight": "PV-gewicht (entity-id of constante)",
@@ -148,7 +150,7 @@
   "services": {
     "generate_dashboard": {
       "name": "Dashboard genereren",
-      "description": "Bouwt een Energy Balancer-dashboard op basis van de huidige configuratie en registreert het bij Home Assistant.",
+      "description": "Voegt een Energy Balancer-dashboard toe aan de zijbalk (alleen beheerders). Het dashboard volgt zelf de actuele configuratie. Een bestaand dashboard op hetzelfde pad wordt nooit gewijzigd: de aanroep wordt dan geweigerd.",
       "fields": {
         "dashboard_title": {
           "name": "Titel",
@@ -156,7 +158,11 @@
         },
         "dashboard_path": {
           "name": "URL-pad",
-          "description": "URL-pad. Moet een koppelteken bevatten."
+          "description": "URL-pad. Moet een koppelteken bevatten en mag niet door een ander dashboard gebruikt worden."
+        },
+        "dashboard_icon": {
+          "name": "Icoon",
+          "description": "Icoon in de zijbalk."
         }
       }
     },

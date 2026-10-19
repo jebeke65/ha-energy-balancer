@@ -1,3 +1,4 @@
+# Portions derived from SEM (https://github.com/traktore-org/sem-community), MIT License, Copyright (c) 2025 belinea4071. See NOTICE.
 # Energy Balancer dashboard — SEM lookalike (cards ported to the eb- namespace).
 # View order mirrors SEM: Home, Energy, Battery, EV, Control, Configuration,
 # Costs, System. The generator injects entity_prefix (sensor.eb_) into every
@@ -107,6 +108,7 @@ views:
     path: ev
     icon: mdi:car-electric
     type: panel
+    eb_requires: car_charger      # dropped when there is no car charger cell
     cards:
       - type: vertical-stack
         cards:
@@ -114,27 +116,11 @@ views:
             tab: ev
           - type: entities
             title: Car / charger
-            entities:
-              - entity: sensor.eb_car_charger
-                name: EB car (power)
-              - entity: sensor.eb_ev_power
-                name: Charging power
-              - entity: number.eb_car_charger_take
-                name: Take %
-              - entity: binary_sensor.car_connected
-                name: Connected
-              - entity: binary_sensor.car_charging
-                name: Charging
-              - entity: input_select.car_charge_mode
-                name: Charge mode
+            eb_fill: car_entities         # from the car charger cell's own wiring
           - type: custom:eb-chart-card
             default_period: "24h"
             title: Car 24h
-            series:
-              - entity: sensor.eb_layer_car_charger
-                name: Car
-                color: "#8DC892"
-                type: area
+            eb_fill: car_series           # the car charger's layer sensor
 
   # ── CONTROL — SEM control cards on live EB data ──
   - title: Control
@@ -147,23 +133,12 @@ views:
           - type: custom:eb-tab-header
             tab: control
           - type: custom:eb-control-card
-          - type: custom:eb-load-priority-card
           - type: entities
             title: Control — take %
-            entities:
-              - entity: number.eb_car_charger_take
-                name: Car %
-              - entity: number.eb_goodwe_take
-                name: GoodWe %
-              - entity: number.eb_marstek_take
-                name: Marstek %
+            eb_fill: take_sliders         # one slider per steerable cell
           - type: markdown
             title: Actuator intent (dry-run while observer is on)
-            content: |
-              {% for c in ['car_charger','goodwe','marstek'] -%}
-              {% set e = 'sensor.eb_' ~ c -%}
-              - **{{ c }}**: {{ state_attr(e,'actuator_action') }} → {{ state_attr(e,'actuator_setpoint') }}{{ state_attr(e,'actuator_unit') }} (sent: {{ state_attr(e,'actuator_sent') }})
-              {% endfor -%}
+            eb_fill: actuator_markdown    # loops over the steerable cells
 
   # ── CONFIGURATION — in-dashboard settings (config-card) ──
   - title: Configuration
@@ -180,15 +155,7 @@ views:
           - type: custom:eb-config-card
           - type: entities
             title: System sensors (live)
-            entities:
-              - entity: sensor.solar_production
-                name: Solar
-              - entity: sensor.house_consumption_without_car_charger
-                name: House
-              - entity: sensor.grid_active_power
-                name: Grid
-              - entity: sensor.solar_forecast_remaining_today
-                name: Forecast today
+            eb_fill: system_sensors       # the configured solar/house/grid/forecast sensors
 
   # ── COSTS — tariff + cost/savings accounting ──
   - title: Costs
@@ -237,18 +204,7 @@ views:
           - type: custom:eb-grid-card
           - type: entities
             title: Layers / pools
-            entities:
-              - sensor.eb_layer_solar
-              - sensor.eb_layer_house
-              - sensor.eb_layer_car_charger
-              - sensor.eb_layer_home_battery
-              - sensor.eb_layer_home_battery_soc
-              - sensor.eb_layer_home_battery_target
-              - sensor.eb_layer_net
+            eb_fill: layers               # every sensor.eb_layer_* that exists
           - type: markdown
             title: Per-cell diagnostics
-            content: |
-              {% for c in ['solar','house','car_charger','goodwe','marstek','net'] -%}
-              {% set e = 'sensor.eb_' ~ c -%}
-              - **{{ c }}**: {{ state_attr(e,'action') }} · {{ states(e) }} W · rest in {{ state_attr(e,'rest_in_w') }} / out {{ state_attr(e,'rest_out_w') }} · headroom {{ state_attr(e,'headroom_w') }} — _{{ state_attr(e,'reason') }}_
-              {% endfor -%}
+            eb_fill: diagnostics_markdown # loops over every cell in the chain

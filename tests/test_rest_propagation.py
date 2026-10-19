@@ -1,4 +1,4 @@
-"""Rest propagation — meten is weten.
+"""Rest propagation — measuring is knowing.
 
 A cell hands the next one what is left AFTER its own real consumption. Not after
 what it was ASKED to consume: those two are not the same thing, and the gap

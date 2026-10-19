@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import logging
 import time
+from calendar import monthrange
 from datetime import datetime, timedelta
 
 from homeassistant.core import HomeAssistant
@@ -45,10 +46,34 @@ from .const import (
 )
 from .actuation import run_actuation
 from .intake import from_external
-from .core import CellConfig, CellState, build_layers, compute
+from .core import (CellConfig, CellState, block_budget_w, build_layers,
+                   compute, quarter_remaining_s)
+from . import car_brain
 from .params import clamp_algo, validate_config
 
 _LOGGER = logging.getLogger(__name__)
+
+# The "lifetime" accounting bucket exists for one reason: never-resetting energy
+# counters the HA energy dashboard will accept. The accounting snapshot generates
+# every field for every period, so without this filter the bucket would also spawn
+# lifetime_costs / _savings / _export_revenue / _battery_savings / _net_cost —
+# sensors nobody asked for, and confusing next to the existing
+# sensor.eb_lifetime_total_savings. Only the four energy counters go out.
+_LIFETIME_GEPUBLICEERD = frozenset({
+    "lifetime_grid_import_energy", "lifetime_grid_export_energy",
+    "lifetime_solar_energy", "lifetime_house_energy",
+})
+
+
+def _publiceer_snapshot_key(key: str) -> bool:
+    """False for lifetime_* keys that are not one of the four energy counters.
+
+    lifetime_total_savings is not period-generated and predates this, so it is
+    left alone.
+    """
+    if key == "lifetime_total_savings" or not key.startswith("lifetime_"):
+        return True
+    return key in _LIFETIME_GEPUBLICEERD
 
 
 class EBCoordinator(DataUpdateCoordinator):
@@ -81,6 +106,17 @@ class EBCoordinator(DataUpdateCoordinator):
         self.daily_solar_sensor = config.get("daily_solar_sensor") or "sensor.solar_production_today"
         self.peak_limit_default = float(config.get(CONF_PEAK_LIMIT_W, DEFAULT_PEAK_LIMIT_W))
         self.peak_limit_sensors = config.get(CONF_PEAK_LIMIT_SENSORS, []) or []
+        self.peak_max_w = float(config.get("peak_max_w", 0.0) or 0.0)
+        # Upper brake: the running 15-minute block. See _block_budget.
+        self.block_demand_sensor = config.get("block_demand_sensor") or ""
+        # Month rollover: the meter keeps last month's peak for the first quarter
+        # of the new month, so the fresh month would inherit it. See
+        # _in_month_start_window / _month_start_peak.
+        self.month_peak_sensor = config.get("month_peak_sensor") or ""
+        self.month_start_peak_policy = config.get("month_start_peak_policy", "previous")
+        self.month_start_window_min = int(config.get("month_start_window_min", 30))
+        # Same cap, but already biting BEFORE midnight. See _in_month_start_window.
+        self.month_end_window_min = int(config.get("month_end_window_min", 0))
         self.import_price_cfg = config.get("import_price_per_kwh", 0.0)
         self.export_price_cfg = config.get("export_price_per_kwh", 0.0)
 
@@ -93,6 +129,15 @@ class EBCoordinator(DataUpdateCoordinator):
         self._prev_actions: dict = {}
         self._tier_pct: dict = {}
         self._cell_states: dict = {}
+        # Car-brain memory per cell (buffer / debounce clock / lagging limit).
+        # Only ever populated for a cell with use_car_brain on.
+        self._car_states: dict = {}
+        # Last (take_pct, car_mode) per car cell — see the input-change block
+        # in _tick. The app gets a listener for these two; EB polls.
+        self._car_inputs: dict = {}
+        # Previous value of the flag per cell, so an off→on flip can start the
+        # brain clean instead of resuming a stale window (see _tick).
+        self._car_brain_on: dict = {}
 
         # Build steerable cell configs once.
         self.cell_configs: list[CellConfig] = []
@@ -143,6 +188,16 @@ class EBCoordinator(DataUpdateCoordinator):
             "connected_sensor": algo.get("connected_sensor"),
             "charging_sensor": algo.get("charging_sensor"),
             "charge_mode_entity": algo.get("charge_mode_entity"),
+            "use_car_brain": algo.get("use_car_brain", False),
+            # Only consulted when no charge_mode_entity is configured; that
+            # helper, when present, is the single knob.
+            "car_mode": algo.get("car_mode", "Automatisch"),
+            "start_margin_w": algo.get("start_margin_w", 50),
+            "debounce_s": algo.get("debounce_s", 15),
+            "solar_debounce_s": algo.get("solar_debounce_s", 300),
+            "average_n": algo.get("average_n", 5),
+            "limit_step_w": algo.get("limit_step_w", 50),
+            "surplus_tier_soc": algo.get("surplus_tier_soc", 80),
         }
         return config, io
 
@@ -207,9 +262,22 @@ class EBCoordinator(DataUpdateCoordinator):
     # Tunables that take effect next tick without an integration reload.
     LIVE_ALGO_KEYS = ("sunny_min_soc", "no_sun_min_soc", "hysteresis",
                       "charge_floor_w", "take_pct", "pv_weight",
-                      "min_soc_mode", "manual_min_soc")
+                      "min_soc_mode", "manual_min_soc",
+                      # Car brain. use_car_brain is the important one: it is the
+                      # way in AND the way back, so it must flip without a
+                      # reload. All of these are read from cell_io every tick.
+                      "use_car_brain", "start_margin_w", "debounce_s",
+                      "solar_debounce_s", "average_n", "car_mode",
+                      "surplus_tier_soc")
     LIVE_SYSTEM_KEYS = ("peak_limit_w", "observer_mode",
-                        "import_price_per_kwh", "export_price_per_kwh")
+                        "import_price_per_kwh", "export_price_per_kwh",
+                        # Must flip without a reload: the window it governs is
+                        # 30 minutes once a month, so waiting for a restart
+                        # means waiting a month.
+                        "month_start_peak_policy", "month_start_window_min",
+                        "month_end_window_min",
+                        "month_peak_sensor", "block_demand_sensor",
+                        "peak_max_w")
 
     def apply_live_option(self, key: str, value, cell_id: str | None = None) -> None:
         """Apply a tunable immediately; persistence is handled by the caller."""
@@ -219,6 +287,18 @@ class EBCoordinator(DataUpdateCoordinator):
             return
         if key == "peak_limit_w":
             self.peak_limit_default = float(value)
+        elif key == "month_start_peak_policy":
+            self.month_start_peak_policy = str(value)
+        elif key == "month_start_window_min":
+            self.month_start_window_min = int(value)
+        elif key == "month_end_window_min":
+            self.month_end_window_min = int(value)
+        elif key == "month_peak_sensor":
+            self.month_peak_sensor = str(value or "")
+        elif key == "block_demand_sensor":
+            self.block_demand_sensor = str(value or "")
+        elif key == "peak_max_w":
+            self.peak_max_w = float(value or 0.0)
         elif key == "import_price_per_kwh":
             self.import_price_cfg = value
         elif key == "export_price_per_kwh":
@@ -310,22 +390,94 @@ class EBCoordinator(DataUpdateCoordinator):
             cfg.target_soc = (clamp_algo("target_soc", self._resolve(t))
                               if t is not None else None)
 
+            # --- Car brain (off unless explicitly enabled on this cell) ------
+            # Read from cell_io every tick, so energy_balancer.set_option can
+            # flip it (and the tunables) without a reload. That matters both
+            # ways: it is how the brain is switched on and how it is switched
+            # back off if it misbehaves.
+            was_on = self._car_brain_on.get(cfg.id, False)
+            cfg.use_car_brain = bool(io.get("use_car_brain", False))
+            if cfg.use_car_brain and not was_on:
+                # Off→on: throw the old memory away and start like the app does
+                # on boot — empty buffer, no "last above start", limit 0. A
+                # half-full window from an earlier session describes a different
+                # afternoon; averaging today's surplus with it would produce a
+                # number neither side ever saw. Pinned by the wiring check.
+                self._car_states.pop(cfg.id, None)
+                self._car_inputs.pop(cfg.id, None)
+            self._car_brain_on[cfg.id] = cfg.use_car_brain
+            if cfg.use_car_brain:
+                cfg.start_margin_w = clamp_algo(
+                    "start_margin_w", self._resolve(io.get("start_margin_w"), 50))
+                cfg.debounce_s = int(clamp_algo(
+                    "debounce_s", self._resolve(io.get("debounce_s"), 15)))
+                cfg.solar_debounce_s = int(clamp_algo(
+                    "solar_debounce_s", self._resolve(io.get("solar_debounce_s"), 300)))
+                cfg.average_n = int(clamp_algo(
+                    "average_n", self._resolve(io.get("average_n"), 5)))
+                cfg.limit_step_w = clamp_algo(
+                    "limit_step_w", self._resolve(io.get("limit_step_w"), 50))
+                cfg.surplus_tier_soc = clamp_algo(
+                    "surplus_tier_soc", self._resolve(io.get("surplus_tier_soc"), 80))
+                # The raw mode string — None when the entity is missing or
+                # unavailable, because the app's two reads of it differ in
+                # their fallback (see car_brain._set_limit_if_needed).
+                # With a helper configured that helper IS the knob (the select
+                # entity is only a window on it); without one, the cell's own
+                # car_mode option is used and select.eb_<cell>_mode writes there.
+                mode_ent = io.get("charge_mode_entity")
+                cfg.car_mode = car_brain.resolve_mode(
+                    self._read_str(mode_ent, "") if mode_ent
+                    else io.get("car_mode"))
+
+                # A deliberate change of the ratio or the mode must act at
+                # once. The app subscribes to both helpers; EB polls, so the
+                # change is noticed here and handed to the brain's state.
+                # See car_brain.apply_input_change for why the debounce clock
+                # is reset as well (the app leaves it running, which costs up
+                # to solar_debounce_s before a lowered ratio does anything).
+                # Deliberately NOT in core/car_brain: the parity harness drives
+                # core.compute() directly, so the port stays exactly the app.
+                car_inputs = (cfg.take_pct, cfg.car_mode)
+                car_state = self._car_states.get(cfg.id)
+                if (cfg.id in self._car_inputs
+                        and car_inputs != self._car_inputs[cfg.id]
+                        and car_state is not None):
+                    car_brain.apply_input_change(car_state)
+                self._car_inputs[cfg.id] = car_inputs
+
             st = CellState(
                 soc=soc, measured_w=power, online=online,
                 prev_action=self._prev_actions.get(cfg.id, "idle"),
+                car_state=self._car_states.get(cfg.id),
+                now_ts=time.time(),
             )
             cells.append((cfg, st))
             self._cell_states[cfg.id] = st
             source_sensors[cfg.id] = io.get("power_sensor", "")
 
-        # Peak limit: highest of configured sensors, else default.
-        peak_limit = 0.0
+        # --- The one place the ceiling is decided -------------------------
+        # Two inputs, one rule:
+        #   start reference — peak_limit_w, the number in EB's own config. It is
+        #     what you WANT the month to cost and it never moves on its own.
+        #   running reference — the measured monthly peak. Once a month is
+        #     spoiled, staying under the start reference buys nothing, so the
+        #     measurement may raise the ceiling. That is the max().
+        #   your own max — a knob that only ever raises. Its lower bound moves
+        #     with max(peak, start), so it cannot be set under what already
+        #     happened; that would mean nothing, since a spent quarter cannot be
+        #     unspent.
+        # Everything else in the house should read the published result
+        # (sensor.eb_target_peak_limit) rather than recompute this.
+        in_window = self._in_month_start_window()
+        running_peak = 0.0
         for s in self.peak_limit_sensors:
             v = self._read_float(s, 0.0)
-            if v > peak_limit:
-                peak_limit = v
-        if peak_limit <= 0:
-            peak_limit = self.peak_limit_default
+            if in_window and s and s == self.month_peak_sensor:
+                v = self._month_start_peak(v)
+            if v > running_peak:
+                running_peak = v
+        peak_limit = max(self.peak_limit_default, running_peak, self.peak_max_w)
 
         cells.append(
             (CellConfig(id="net", position=99, mode="grid", type="grid",
@@ -334,13 +486,16 @@ class EBCoordinator(DataUpdateCoordinator):
         )
 
         result = compute(cells, forecast_wh=forecast, grid_w=grid,
-                         tier_pct=self._tier_pct, intent=self._charge_intent())
+                         tier_pct=self._tier_pct, intent=self._charge_intent(),
+                         block_budget_w=self._block_budget(peak_limit, grid, cells))
 
         # Persist the latched prev_action per steerable cell.
         for cfg in self.cell_configs:
             st = self._cell_states.get(cfg.id)
             if st is not None:
                 self._prev_actions[cfg.id] = st.prev_action
+                if st.car_state is not None:
+                    self._car_states[cfg.id] = st.car_state
 
         layers = build_layers(cells, result.outputs, result.details)
 
@@ -368,7 +523,8 @@ class EBCoordinator(DataUpdateCoordinator):
         batt_discharge_w = max(0.0, -float(compat.get("battery_power") or 0.0))
         now = datetime.now()
         self.accounting.tick(now, time.time(), grid, solar,
-                             batt_discharge_w, import_price, export_price)
+                             batt_discharge_w, import_price, export_price,
+                             house_w=house)
         self._track_quarter_peak(now, grid)
 
         return {
@@ -383,6 +539,85 @@ class EBCoordinator(DataUpdateCoordinator):
                                          import_price, export_price, forecast),
             "timestamp": now.isoformat(timespec="seconds"),
         }
+
+    def peak_max_floor(self) -> float:
+        """Lower bound for the user's max knob: max(monthly peak, start ref).
+
+        Setting the knob under what already happened would mean nothing — a spent
+        quarter cannot be unspent — so the entity refuses to go there.
+        """
+        measured = 0.0
+        for s in self.peak_limit_sensors:
+            v = self._read_float(s, 0.0)
+            if v > measured:
+                measured = v
+        return max(self.peak_limit_default, measured)
+
+    # ------------------------------------------------------- block budget
+    def _block_budget(self, ceiling_w: float, grid_w: float, cells) -> float | None:
+        """Upper brake: what the tier may still draw this quarter (W).
+
+        None when no block sensor is configured — then the base value is left
+        alone and the external brain's own peak limit is the only guard.
+
+        `other_load_w` is everything on the meter that is NOT this tier, so the
+        tier gets what is left of the block after the house has been served. Its
+        own draw is taken from the measurement rather than the setpoint: measuring
+        is knowing, and a device that ignores its setpoint must not also get a budget
+        computed as if it had obeyed.
+        """
+        if not self.block_demand_sensor:
+            return None
+        block_w = self._read_float(self.block_demand_sensor, 0.0)
+        now = datetime.now()
+        remaining = quarter_remaining_s(now.minute, now.second)
+        tier_w = sum(
+            float(st.measured_w)
+            for cfg, st in cells
+            if cfg.type == "house_battery" and st is not None
+        )
+        return block_budget_w(ceiling_w, block_w, remaining,
+                             max(0.0, grid_w) - max(0.0, tier_w))
+
+    # --------------------------------------------------- month rollover
+    def _in_month_start_window(self, now: datetime | None = None) -> bool:
+        """True around the month rollover — on either side of midnight.
+
+        Both windows apply the same cap (see _month_start_peak):
+
+        * after — the first month_start_window_min minutes of the 1st. The meter
+          holds the previous month's peak for a while past midnight (measured on
+          the P1, 2026-08-31: 15,2 minutes), so a stale ceiling there licenses EB
+          to re-establish the old peak in the very first block of the new month.
+        * before — the last month_end_window_min minutes of the last day of the
+          month. A tier already pulling 3 kW at 23:59 is still pulling it at
+          00:01, and that block is what sets the new month's peak; the brake has
+          to be biting before the boundary rather than racing to catch it. It
+          also makes the whole mechanism testable without waiting a month.
+
+        Either window at 0 switches that side off; no month_peak_sensor switches
+        the whole thing off.
+        """
+        if not self.month_peak_sensor:
+            return False
+        now = now or datetime.now()
+        minute_of_day = now.hour * 60 + now.minute
+        if (self.month_start_window_min > 0 and now.day == 1
+                and minute_of_day < self.month_start_window_min):
+            return True
+        last_day = monthrange(now.year, now.month)[1]
+        if (self.month_end_window_min > 0 and now.day == last_day
+                and (1440 - minute_of_day) <= self.month_end_window_min):
+            return True
+        return False
+
+    def _month_start_peak(self, measured: float) -> float:
+        """What the (stale) monthly-peak reading counts as inside the window."""
+        if self.month_start_peak_policy == "zero":
+            return 0.0
+        if self.month_start_peak_policy == "configured":
+            return min(measured, self.peak_limit_default)
+        return measured                      # "previous" — behaviour as it was
 
     # ------------------------------------------------------- 15-min peak
     def _track_quarter_peak(self, now: datetime, grid_w: float) -> None:
@@ -510,6 +745,13 @@ class EBCoordinator(DataUpdateCoordinator):
                 self._read_float(self.daily_solar_sensor, 0.0), 2)},
             "monthly_grid_import_energy": {"value": acct["monthly_grid_import_energy"]},
             "monthly_grid_export_energy": {"value": acct["monthly_grid_export_energy"]},
+            # Never-resetting counters, published as total_increasing — the only
+            # shape the energy dashboard accepts. The daily/monthly/yearly ones
+            # above reset without a last_reset and are for EB's own cards.
+            "lifetime_grid_import_energy": {"value": acct["lifetime_grid_import_energy"]},
+            "lifetime_grid_export_energy": {"value": acct["lifetime_grid_export_energy"]},
+            "lifetime_solar_energy": {"value": acct["lifetime_solar_energy"]},
+            "lifetime_house_energy": {"value": acct["lifetime_house_energy"]},
             # solar forecast (from the configured forecast_sensor;
             # semantics: remaining kWh expected today)
             "forecast_today_kwh": {
@@ -529,7 +771,7 @@ class EBCoordinator(DataUpdateCoordinator):
             "diag_sensors_unavailable": {"value": unavailable},
             # costs (flat accounting snapshot)
             **{k: {"value": v} for k, v in acct.items()
-               if k != "monthly_consecutive_peak"},
+               if k != "monthly_consecutive_peak" and _publiceer_snapshot_key(k)},
         }
 
     def _build_compat(self, details: dict, layers: list) -> dict:

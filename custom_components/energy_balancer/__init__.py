@@ -13,13 +13,15 @@ import voluptuous as vol
 
 from homeassistant.config_entries import SOURCE_IMPORT, ConfigEntry
 from homeassistant.core import HomeAssistant, ServiceCall
+from homeassistant.helpers.service import async_register_admin_service
 from homeassistant.helpers.typing import ConfigType
 
 from .const import DOMAIN
 from .coordinator import EBCoordinator
 from .core import adopt_wiring, migrate_cell_modes
 from .dashboard_gen import async_generate_dashboard
-from .params import is_entity_ref
+from .frontend import async_setup_frontend
+from .params import OptionValueError, coerce_option, is_entity_ref
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -30,7 +32,8 @@ PLATFORMS = ["sensor", "number", "switch", "select"]
 SERVICE_GENERATE_DASHBOARD = "generate_dashboard"
 GENERATE_DASHBOARD_SCHEMA = vol.Schema({
     vol.Optional("dashboard_title", default="Energy Balancer"): vol.Coerce(str),
-    vol.Optional("dashboard_path", default="ebi-dashboard"): vol.Coerce(str),
+    vol.Optional("dashboard_path", default="energy-balancer"): vol.Coerce(str),
+    vol.Optional("dashboard_icon", default="mdi:scale-balance"): vol.Coerce(str),
 })
 
 SERVICE_SET_OPTION = "set_option"
@@ -102,7 +105,25 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
-    """Trigger a one-time import of the YAML config into a config entry."""
+    """Frontend wiring and the dashboard service (once per run), then a
+    one-time import of the YAML config into a config entry."""
+    await async_setup_frontend(hass)
+
+    async def _handle_generate_dashboard(call: ServiceCall) -> None:
+        result = await async_generate_dashboard(
+            hass,
+            title=call.data["dashboard_title"],
+            path=call.data["dashboard_path"],
+            icon=call.data["dashboard_icon"],
+        )
+        _LOGGER.info("generate_dashboard '%s': %s", call.data["dashboard_path"], result)
+
+    # Admin only: it adds a dashboard to everyone's sidebar.
+    async_register_admin_service(
+        hass, DOMAIN, SERVICE_GENERATE_DASHBOARD, _handle_generate_dashboard,
+        schema=GENERATE_DASHBOARD_SCHEMA,
+    )
+
     conf = config.get(DOMAIN)
     if conf:
         # Kept for async_migrate_entry: the package file is the source of the
@@ -124,19 +145,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
-    async def _handle_generate_dashboard(call: ServiceCall) -> None:
-        await async_generate_dashboard(
-            hass, coordinator,
-            title=call.data["dashboard_title"],
-            path=call.data["dashboard_path"],
-        )
-
-    if not hass.services.has_service(DOMAIN, SERVICE_GENERATE_DASHBOARD):
-        hass.services.async_register(
-            DOMAIN, SERVICE_GENERATE_DASHBOARD, _handle_generate_dashboard,
-            schema=GENERATE_DASHBOARD_SCHEMA,
-        )
-
     async def _handle_set_option(call: ServiceCall) -> None:
         cell = call.data.get("cell")
         key = call.data["option"]
@@ -156,13 +164,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             if pool is None:
                 raise vol.Invalid(f"unknown cell or pool '{cell}'")
             targets = pool["members"]
-        # Value may be a number or an entity reference (resolved live).
-        if isinstance(value, str) and not is_entity_ref(value):
+        # Value may be a number, a flag, a mode string, or an entity reference
+        # (resolved live). The conversion follows the key's Spec — see
+        # params.coerce_option; numeric keys behave exactly as they always did.
+        if not (isinstance(value, str) and is_entity_ref(value)):
             try:
-                value = float(value)
-            except ValueError:
-                raise vol.Invalid(
-                    f"value {value!r} is neither a number nor an entity id")
+                value = coerce_option(key, value, cell_scope=bool(cell))
+            except OptionValueError as err:
+                raise vol.Invalid(str(err))
         for target in targets:
             await async_persist_option(hass, entry, coordinator, key, value, target)
 

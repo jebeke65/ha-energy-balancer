@@ -1,0 +1,3578 @@
+[
+ {
+  "knobs": {
+   "min_charge_w": 1444,
+   "hyst_w": 92,
+   "debounce_s": 246,
+   "solar_debounce_s": 291,
+   "average_n": 18,
+   "limit_step_w": 397,
+   "max_charge_w": 7360,
+   "ratio_fallback": 50.0
+  },
+  "ticks": [
+   {
+    "dt": 300.0,
+    "surplus": -0.0,
+    "ratio": 58,
+    "mode": "Automatisch",
+    "min_charge": 1444
+   },
+   {
+    "dt": 5.0,
+    "surplus": -69.1856,
+    "ratio": 58,
+    "mode": "Automatisch",
+    "min_charge": 1444
+   },
+   {
+    "dt": 5.0,
+    "surplus": 5355.09,
+    "ratio": 58,
+    "mode": "Automatisch",
+    "min_charge": 1444
+   },
+   {
+    "dt": 5.0,
+    "surplus": 18.0736,
+    "ratio": 97,
+    "mode": "Automatisch",
+    "min_charge": 1444
+   },
+   {
+    "dt": 10.0,
+    "surplus": 6426.3719,
+    "ratio": 97,
+    "mode": "Automatisch",
+    "min_charge": 1444
+   },
+   {
+    "dt": 5.0,
+    "surplus": -91.1954,
+    "ratio": 97,
+    "mode": "Automatisch",
+    "min_charge": 1444
+   },
+   {
+    "dt": 5.0,
+    "surplus": 83.9993,
+    "ratio": 97,
+    "mode": "Automatisch",
+    "min_charge": 1444
+   },
+   {
+    "dt": 1.0,
+    "surplus": 60.93,
+    "ratio": 97,
+    "mode": "Solar",
+    "min_charge": 1444
+   },
+   {
+    "dt": 10.0,
+    "surplus": 242.2305,
+    "ratio": 97,
+    "mode": "Solar",
+    "min_charge": 1444
+   },
+   {
+    "dt": 1.0,
+    "surplus": 2384.5187,
+    "ratio": 97,
+    "mode": "Solar",
+    "min_charge": 1444
+   },
+   {
+    "dt": 30.0,
+    "surplus": -87.3934,
+    "ratio": 97,
+    "mode": "Solar",
+    "min_charge": 1444
+   },
+   {
+    "dt": 30.0,
+    "surplus": -0.0,
+    "ratio": 97,
+    "mode": "Solar",
+    "min_charge": 1444
+   },
+   {
+    "dt": 5.0,
+    "surplus": -89.6477,
+    "ratio": 97,
+    "mode": "Automatisch",
+    "min_charge": 1444
+   },
+   {
+    "dt": 5.0,
+    "surplus": -94.2979,
+    "ratio": 97,
+    "mode": "Off",
+    "min_charge": 1444
+   },
+   {
+    "dt": 10.0,
+    "surplus": 30.7214,
+    "ratio": 97,
+    "mode": "Off",
+    "min_charge": 1444
+   },
+   {
+    "dt": 1.0,
+    "surplus": 7192.5787,
+    "ratio": 97,
+    "mode": "Off",
+    "min_charge": 1444
+   },
+   {
+    "dt": 30.0,
+    "surplus": 0.0,
+    "ratio": 60,
+    "mode": "Off",
+    "min_charge": 1444
+   },
+   {
+    "dt": 10.0,
+    "surplus": -540.6737,
+    "ratio": 60,
+    "mode": "Off",
+    "min_charge": 1444
+   },
+   {
+    "dt": 5.0,
+    "surplus": 47.0812,
+    "ratio": 60,
+    "mode": "Off",
+    "min_charge": 1444
+   },
+   {
+    "dt": 300.0,
+    "surplus": 55.3295,
+    "ratio": 60,
+    "mode": "Off",
+    "min_charge": 1444
+   },
+   {
+    "dt": 5.0,
+    "surplus": -84.5959,
+    "ratio": 60,
+    "mode": "Off",
+    "min_charge": 1444
+   },
+   {
+    "dt": 300.0,
+    "surplus": 8280.8524,
+    "ratio": 60,
+    "mode": "Off",
+    "min_charge": 1444
+   },
+   {
+    "dt": 10.0,
+    "surplus": 3.0065,
+    "ratio": 60,
+    "mode": "Off",
+    "min_charge": 1444
+   },
+   {
+    "dt": 1.0,
+    "surplus": 0.0,
+    "ratio": 60,
+    "mode": "Off",
+    "min_charge": 1444
+   },
+   {
+    "dt": 5.0,
+    "surplus": 31.2947,
+    "ratio": 60,
+    "mode": "Off",
+    "min_charge": 1444
+   },
+   {
+    "dt": 5.0,
+    "surplus": 0.0,
+    "ratio": 60,
+    "mode": "Off",
+    "min_charge": 1444
+   },
+   {
+    "dt": 300.0,
+    "surplus": 9.6184,
+    "ratio": 60,
+    "mode": "Off",
+    "min_charge": 1444
+   },
+   {
+    "dt": 300.0,
+    "surplus": -0.0,
+    "ratio": 60,
+    "mode": "Off",
+    "min_charge": 1444
+   },
+   {
+    "dt": 5.0,
+    "surplus": -385.9811,
+    "ratio": 60,
+    "mode": "Off",
+    "min_charge": 1444
+   },
+   {
+    "dt": 300.0,
+    "surplus": -0.0,
+    "ratio": 60,
+    "mode": "Off",
+    "min_charge": 1444
+   },
+   {
+    "dt": 5.0,
+    "surplus": 0.0,
+    "ratio": 60,
+    "mode": "Off",
+    "min_charge": 1444
+   },
+   {
+    "dt": 10.0,
+    "surplus": 35.1025,
+    "ratio": 60,
+    "mode": "Off",
+    "min_charge": 1444
+   },
+   {
+    "dt": 5.0,
+    "surplus": 43.109,
+    "ratio": 60,
+    "mode": "Off",
+    "min_charge": 1444
+   },
+   {
+    "dt": 55.189,
+    "surplus": -78.2697,
+    "ratio": 60,
+    "mode": "Off",
+    "min_charge": 1444
+   },
+   {
+    "dt": 300.0,
+    "surplus": 0.0,
+    "ratio": 60,
+    "mode": "Off",
+    "min_charge": 1444
+   },
+   {
+    "dt": 5.0,
+    "surplus": 6049.4141,
+    "ratio": 60,
+    "mode": "Off",
+    "min_charge": 1444
+   },
+   {
+    "dt": 1.0,
+    "surplus": 0.0,
+    "ratio": 60,
+    "mode": "Off",
+    "min_charge": 1444
+   },
+   {
+    "dt": 30.0,
+    "surplus": 6938.5002,
+    "ratio": 60,
+    "mode": "Off",
+    "min_charge": 1444
+   },
+   {
+    "dt": 30.0,
+    "surplus": 0.0,
+    "ratio": 60,
+    "mode": "Off",
+    "min_charge": 1444
+   },
+   {
+    "dt": 300.0,
+    "surplus": 177.1926,
+    "ratio": 41,
+    "mode": "Off",
+    "min_charge": 1444
+   }
+  ],
+  "layer": "random",
+  "guards": "lagging current_limit (limit_step_w)",
+  "mutant_diff_tick": 8,
+  "key": "088060e40aa808cc"
+ },
+ {
+  "knobs": {
+   "min_charge_w": 915,
+   "hyst_w": 41,
+   "debounce_s": 887,
+   "solar_debounce_s": 562,
+   "average_n": 4,
+   "limit_step_w": 468,
+   "max_charge_w": 7400,
+   "ratio_fallback": 50.0
+  },
+  "ticks": [
+   {
+    "dt": 10.0,
+    "surplus": 92.1953,
+    "ratio": 79,
+    "mode": "Solar",
+    "min_charge": 915
+   },
+   {
+    "dt": 30.0,
+    "surplus": -1600.7217,
+    "ratio": 79,
+    "mode": "Solar",
+    "min_charge": 915
+   },
+   {
+    "dt": 10.0,
+    "surplus": 97.0972,
+    "ratio": 79,
+    "mode": "Solar",
+    "min_charge": 915
+   },
+   {
+    "dt": 30.0,
+    "surplus": 74.6379,
+    "ratio": 79,
+    "mode": "Solar",
+    "min_charge": 915
+   },
+   {
+    "dt": 5.0,
+    "surplus": 0.0,
+    "ratio": 79,
+    "mode": "Solar",
+    "min_charge": 915
+   },
+   {
+    "dt": 300.0,
+    "surplus": -50.0716,
+    "ratio": 79,
+    "mode": "Solar",
+    "min_charge": 915
+   },
+   {
+    "dt": 5.0,
+    "surplus": 3219.9678,
+    "ratio": 79,
+    "mode": "Solar",
+    "min_charge": 915
+   },
+   {
+    "dt": 5.0,
+    "surplus": 0.0,
+    "ratio": 79,
+    "mode": "Solar",
+    "min_charge": 915
+   },
+   {
+    "dt": 10.0,
+    "surplus": 90.8211,
+    "ratio": 79,
+    "mode": "Solar",
+    "min_charge": 915
+   },
+   {
+    "dt": 5.0,
+    "surplus": 0.0,
+    "ratio": 79,
+    "mode": "Solar",
+    "min_charge": 915
+   },
+   {
+    "dt": 300.0,
+    "surplus": 4525.1386,
+    "ratio": 79,
+    "mode": "Solar",
+    "min_charge": 915
+   },
+   {
+    "dt": 46.995,
+    "surplus": 4275.3979,
+    "ratio": 65,
+    "mode": "Solar",
+    "min_charge": 915
+   },
+   {
+    "dt": 300.0,
+    "surplus": 6697.479,
+    "ratio": 65,
+    "mode": "Solar",
+    "min_charge": 915
+   },
+   {
+    "dt": 5.0,
+    "surplus": -0.0,
+    "ratio": 65,
+    "mode": "Solar",
+    "min_charge": 915
+   },
+   {
+    "dt": 53.138,
+    "surplus": 8511.9809,
+    "ratio": 65,
+    "mode": "Solar",
+    "min_charge": 915
+   },
+   {
+    "dt": 1.0,
+    "surplus": -0.0,
+    "ratio": 65,
+    "mode": "Off",
+    "min_charge": 915
+   },
+   {
+    "dt": 300.0,
+    "surplus": 45.1461,
+    "ratio": 65,
+    "mode": "Off",
+    "min_charge": 915
+   },
+   {
+    "dt": 5.0,
+    "surplus": 2.5187,
+    "ratio": 65,
+    "mode": "Off",
+    "min_charge": 915
+   },
+   {
+    "dt": 33.99,
+    "surplus": -25.8084,
+    "ratio": 65,
+    "mode": "Off",
+    "min_charge": 915
+   },
+   {
+    "dt": 5.0,
+    "surplus": 5488.7414,
+    "ratio": 65,
+    "mode": "Off",
+    "min_charge": 915
+   },
+   {
+    "dt": 12.135,
+    "surplus": -7.1662,
+    "ratio": 65,
+    "mode": "Off",
+    "min_charge": 915
+   },
+   {
+    "dt": 30.0,
+    "surplus": 0.0,
+    "ratio": 65,
+    "mode": "Off",
+    "min_charge": 915
+   },
+   {
+    "dt": 30.0,
+    "surplus": 0.0,
+    "ratio": 65,
+    "mode": "Off",
+    "min_charge": 915
+   },
+   {
+    "dt": 30.0,
+    "surplus": 6024.5721,
+    "ratio": 65,
+    "mode": "Off",
+    "min_charge": 915
+   },
+   {
+    "dt": 15.702,
+    "surplus": -6.8139,
+    "ratio": 65,
+    "mode": "Off",
+    "min_charge": 915
+   },
+   {
+    "dt": 1.0,
+    "surplus": 0.0,
+    "ratio": 65,
+    "mode": "Off",
+    "min_charge": 915
+   },
+   {
+    "dt": 1.0,
+    "surplus": 0.0,
+    "ratio": 65,
+    "mode": "Off",
+    "min_charge": 915
+   },
+   {
+    "dt": 10.0,
+    "surplus": -0.0,
+    "ratio": 65,
+    "mode": "Off",
+    "min_charge": 915
+   },
+   {
+    "dt": 1.958,
+    "surplus": 0.0,
+    "ratio": 65,
+    "mode": "Off",
+    "min_charge": 915
+   },
+   {
+    "dt": 1.0,
+    "surplus": 0.924,
+    "ratio": 65,
+    "mode": "Off",
+    "min_charge": 915
+   },
+   {
+    "dt": 30.0,
+    "surplus": 0.4281,
+    "ratio": 65,
+    "mode": "Off",
+    "min_charge": 915
+   },
+   {
+    "dt": 5.0,
+    "surplus": 3934.8636,
+    "ratio": 65,
+    "mode": "Off",
+    "min_charge": 915
+   },
+   {
+    "dt": 5.0,
+    "surplus": 69.9599,
+    "ratio": 65,
+    "mode": "Solar",
+    "min_charge": 915
+   },
+   {
+    "dt": 300.0,
+    "surplus": 0.0,
+    "ratio": 65,
+    "mode": "Solar",
+    "min_charge": 915
+   },
+   {
+    "dt": 300.0,
+    "surplus": 0.0,
+    "ratio": 65,
+    "mode": "Solar",
+    "min_charge": 915
+   },
+   {
+    "dt": 30.0,
+    "surplus": 5603.541,
+    "ratio": 65,
+    "mode": "Solar",
+    "min_charge": 915
+   },
+   {
+    "dt": 5.0,
+    "surplus": -7.1139,
+    "ratio": 65,
+    "mode": "Solar",
+    "min_charge": 915
+   },
+   {
+    "dt": 1.0,
+    "surplus": -48.8515,
+    "ratio": 65,
+    "mode": "Solar",
+    "min_charge": 915
+   },
+   {
+    "dt": 10.0,
+    "surplus": -17.8529,
+    "ratio": 11,
+    "mode": "Solar",
+    "min_charge": 915
+   },
+   {
+    "dt": 10.0,
+    "surplus": -0.0,
+    "ratio": 92,
+    "mode": "Solar",
+    "min_charge": 915
+   }
+  ],
+  "layer": "random",
+  "guards": "lagging current_limit (limit_step_w)",
+  "mutant_diff_tick": 38,
+  "key": "232c905ca02decae"
+ },
+ {
+  "knobs": {
+   "min_charge_w": 3000,
+   "hyst_w": 1,
+   "debounce_s": 0,
+   "solar_debounce_s": 30,
+   "average_n": 5,
+   "limit_step_w": 50,
+   "max_charge_w": 7400,
+   "ratio_fallback": 50.0
+  },
+  "ticks": [
+   {
+    "dt": 1.0,
+    "surplus": 2999.5,
+    "ratio": 100,
+    "mode": "Off",
+    "min_charge": 3000
+   },
+   {
+    "dt": 1.0,
+    "surplus": 3000.5,
+    "ratio": 100,
+    "mode": "Solar",
+    "min_charge": 3000
+   },
+   {
+    "dt": 30.0,
+    "surplus": 2999.5,
+    "ratio": 100,
+    "mode": "Solar",
+    "min_charge": 3000
+   },
+   {
+    "dt": 10.0,
+    "surplus": 3001.5,
+    "ratio": 100,
+    "mode": "Solar",
+    "min_charge": 3000
+   },
+   {
+    "dt": 10.0,
+    "surplus": 3000.5,
+    "ratio": 100,
+    "mode": "Solar",
+    "min_charge": 3000
+   },
+   {
+    "dt": 300.0,
+    "surplus": 2999.0,
+    "ratio": 100,
+    "mode": "Solar",
+    "min_charge": 3000
+   },
+   {
+    "dt": 300.0,
+    "surplus": 2951.0,
+    "ratio": 100,
+    "mode": "Solar",
+    "min_charge": 3000
+   },
+   {
+    "dt": 300.0,
+    "surplus": 3000.5,
+    "ratio": 100,
+    "mode": "Solar",
+    "min_charge": 3000
+   },
+   {
+    "dt": 5.0,
+    "surplus": 3001.0,
+    "ratio": 100,
+    "mode": "Solar",
+    "min_charge": 3000
+   },
+   {
+    "dt": 10.0,
+    "surplus": 2999.0,
+    "ratio": 100,
+    "mode": "Solar",
+    "min_charge": 3000
+   },
+   {
+    "dt": 10.0,
+    "surplus": 3000.0,
+    "ratio": 100,
+    "mode": "Solar",
+    "min_charge": 3000
+   },
+   {
+    "dt": 300.0,
+    "surplus": 3000.0,
+    "ratio": 100,
+    "mode": "Solar",
+    "min_charge": 3000
+   },
+   {
+    "dt": 300.0,
+    "surplus": 3001.0,
+    "ratio": 100,
+    "mode": "Solar",
+    "min_charge": 3000
+   },
+   {
+    "dt": 31.0,
+    "surplus": 2998.0,
+    "ratio": 100,
+    "mode": "Solar",
+    "min_charge": 3000
+   },
+   {
+    "dt": 31.0,
+    "surplus": 3002.0,
+    "ratio": 100,
+    "mode": "Solar",
+    "min_charge": 3000
+   },
+   {
+    "dt": 5.0,
+    "surplus": 3000.0,
+    "ratio": 46,
+    "mode": "Solar",
+    "min_charge": 3000
+   },
+   {
+    "dt": 300.0,
+    "surplus": 6410.8696,
+    "ratio": 46,
+    "mode": "Solar",
+    "min_charge": 3000
+   },
+   {
+    "dt": 10.0,
+    "surplus": 6518.4783,
+    "ratio": 84,
+    "mode": "Solar",
+    "min_charge": 3000
+   },
+   {
+    "dt": 300.0,
+    "surplus": 3570.2381,
+    "ratio": 84,
+    "mode": "Solar",
+    "min_charge": 3000
+   },
+   {
+    "dt": 31.0,
+    "surplus": 3573.8095,
+    "ratio": 84,
+    "mode": "Solar",
+    "min_charge": 3000
+   },
+   {
+    "dt": 5.0,
+    "surplus": 3571.4286,
+    "ratio": 84,
+    "mode": "Solar",
+    "min_charge": 3000
+   },
+   {
+    "dt": 31.0,
+    "surplus": 3632.1429,
+    "ratio": 84,
+    "mode": "Solar",
+    "min_charge": 3000
+   },
+   {
+    "dt": 29.0,
+    "surplus": 3632.1429,
+    "ratio": 84,
+    "mode": "Solar",
+    "min_charge": 3000
+   },
+   {
+    "dt": 5.0,
+    "surplus": 3573.2143,
+    "ratio": 84,
+    "mode": "Solar",
+    "min_charge": 3000
+   },
+   {
+    "dt": 31.0,
+    "surplus": 3572.0238,
+    "ratio": 84,
+    "mode": "Solar",
+    "min_charge": 3000
+   },
+   {
+    "dt": 1.0,
+    "surplus": 3572.619,
+    "ratio": 84,
+    "mode": "Solar",
+    "min_charge": 3000
+   },
+   {
+    "dt": 31.0,
+    "surplus": 3569.6429,
+    "ratio": 84,
+    "mode": "Solar",
+    "min_charge": 3000
+   },
+   {
+    "dt": 5.0,
+    "surplus": 3571.4286,
+    "ratio": 84,
+    "mode": "Solar",
+    "min_charge": 3000
+   },
+   {
+    "dt": 5.0,
+    "surplus": 3570.2381,
+    "ratio": 84,
+    "mode": "Solar",
+    "min_charge": 3000
+   },
+   {
+    "dt": 10.0,
+    "surplus": 3571.4286,
+    "ratio": 84,
+    "mode": "Solar",
+    "min_charge": 3000
+   },
+   {
+    "dt": 1.0,
+    "surplus": 3511.9048,
+    "ratio": 84,
+    "mode": "Solar",
+    "min_charge": 3000
+   },
+   {
+    "dt": 30.0,
+    "surplus": 3569.0476,
+    "ratio": 84,
+    "mode": "Solar",
+    "min_charge": 3000
+   },
+   {
+    "dt": 1.0,
+    "surplus": 3573.8095,
+    "ratio": 84,
+    "mode": "Solar",
+    "min_charge": 3000
+   },
+   {
+    "dt": 1.0,
+    "surplus": 3629.7619,
+    "ratio": 84,
+    "mode": "Solar",
+    "min_charge": 3000
+   },
+   {
+    "dt": 1.0,
+    "surplus": 3572.0238,
+    "ratio": 84,
+    "mode": "Solar",
+    "min_charge": 3000
+   },
+   {
+    "dt": 30.0,
+    "surplus": 3570.8333,
+    "ratio": 84,
+    "mode": "Solar",
+    "min_charge": 3000
+   },
+   {
+    "dt": 31.0,
+    "surplus": 3572.619,
+    "ratio": 84,
+    "mode": "Solar",
+    "min_charge": 3000
+   },
+   {
+    "dt": 10.0,
+    "surplus": 3573.2143,
+    "ratio": 84,
+    "mode": "Solar",
+    "min_charge": 3000
+   },
+   {
+    "dt": 5.0,
+    "surplus": 3570.2381,
+    "ratio": 84,
+    "mode": "Solar",
+    "min_charge": 3000
+   },
+   {
+    "dt": 1.0,
+    "surplus": 3573.2143,
+    "ratio": 84,
+    "mode": "Solar",
+    "min_charge": 3000
+   }
+  ],
+  "layer": "threshold",
+  "guards": "lagging current_limit (limit_step_w)",
+  "mutant_diff_tick": 30,
+  "key": "3ca03df9f70befb8"
+ },
+ {
+  "knobs": {
+   "min_charge_w": 619,
+   "hyst_w": 77,
+   "debounce_s": 226,
+   "solar_debounce_s": 336,
+   "average_n": 13,
+   "limit_step_w": 399,
+   "max_charge_w": 7360,
+   "ratio_fallback": 50.0
+  },
+  "ticks": [
+   {
+    "dt": 30.0,
+    "surplus": 77.9523,
+    "ratio": 72,
+    "mode": "Solar",
+    "min_charge": 619
+   },
+   {
+    "dt": 5.0,
+    "surplus": -0.0,
+    "ratio": 72,
+    "mode": "Solar",
+    "min_charge": 619
+   },
+   {
+    "dt": 10.0,
+    "surplus": 0.0,
+    "ratio": 72,
+    "mode": "Solar",
+    "min_charge": 619
+   },
+   {
+    "dt": 10.0,
+    "surplus": 0.0,
+    "ratio": 72,
+    "mode": "Solar",
+    "min_charge": 619
+   },
+   {
+    "dt": 300.0,
+    "surplus": 4786.2913,
+    "ratio": 72,
+    "mode": "Solar",
+    "min_charge": 619
+   },
+   {
+    "dt": 30.0,
+    "surplus": 0.0,
+    "ratio": 72,
+    "mode": "Solar",
+    "min_charge": 619
+   },
+   {
+    "dt": 5.0,
+    "surplus": 3566.2711,
+    "ratio": 72,
+    "mode": "Solar",
+    "min_charge": 619
+   },
+   {
+    "dt": 10.0,
+    "surplus": -23.9782,
+    "ratio": 5,
+    "mode": "Solar",
+    "min_charge": 619
+   },
+   {
+    "dt": 300.0,
+    "surplus": 623.8482,
+    "ratio": 5,
+    "mode": "Solar",
+    "min_charge": 619
+   },
+   {
+    "dt": 5.0,
+    "surplus": 69.7932,
+    "ratio": 5,
+    "mode": "Solar",
+    "min_charge": 619
+   },
+   {
+    "dt": 44.776,
+    "surplus": 5820.0123,
+    "ratio": 5,
+    "mode": "Solar",
+    "min_charge": 619
+   },
+   {
+    "dt": 5.0,
+    "surplus": 7934.6121,
+    "ratio": 5,
+    "mode": "Solar",
+    "min_charge": 619
+   },
+   {
+    "dt": 41.537,
+    "surplus": 3.5418,
+    "ratio": 95,
+    "mode": "Solar",
+    "min_charge": 619
+   },
+   {
+    "dt": 30.0,
+    "surplus": 7497.9176,
+    "ratio": 73,
+    "mode": "Solar",
+    "min_charge": 619
+   },
+   {
+    "dt": 10.0,
+    "surplus": -0.0,
+    "ratio": 73,
+    "mode": "Solar",
+    "min_charge": 619
+   },
+   {
+    "dt": 5.0,
+    "surplus": 0.0,
+    "ratio": 73,
+    "mode": "Solar",
+    "min_charge": 619
+   },
+   {
+    "dt": 30.0,
+    "surplus": -7.0486,
+    "ratio": 73,
+    "mode": "Solar",
+    "min_charge": 619
+   },
+   {
+    "dt": 10.0,
+    "surplus": 0.0,
+    "ratio": 73,
+    "mode": "Solar",
+    "min_charge": 619
+   },
+   {
+    "dt": 30.0,
+    "surplus": -72.1549,
+    "ratio": 73,
+    "mode": "Solar",
+    "min_charge": 619
+   },
+   {
+    "dt": 5.0,
+    "surplus": -1.3882,
+    "ratio": 73,
+    "mode": "Solar",
+    "min_charge": 619
+   },
+   {
+    "dt": 300.0,
+    "surplus": 91.8112,
+    "ratio": 73,
+    "mode": "Solar",
+    "min_charge": 619
+   },
+   {
+    "dt": 5.0,
+    "surplus": -42.4771,
+    "ratio": 73,
+    "mode": "Solar",
+    "min_charge": 619
+   },
+   {
+    "dt": 19.102,
+    "surplus": 8756.2622,
+    "ratio": 73,
+    "mode": "Solar",
+    "min_charge": 619
+   },
+   {
+    "dt": 5.0,
+    "surplus": -14.8071,
+    "ratio": 73,
+    "mode": "Solar",
+    "min_charge": 619
+   },
+   {
+    "dt": 300.0,
+    "surplus": -53.2041,
+    "ratio": 73,
+    "mode": "Solar",
+    "min_charge": 619
+   },
+   {
+    "dt": 10.0,
+    "surplus": 0.0,
+    "ratio": 73,
+    "mode": "Off",
+    "min_charge": 619
+   },
+   {
+    "dt": 30.0,
+    "surplus": -0.0,
+    "ratio": 73,
+    "mode": "Off",
+    "min_charge": 619
+   },
+   {
+    "dt": 5.0,
+    "surplus": 3093.8202,
+    "ratio": 73,
+    "mode": "Off",
+    "min_charge": 619
+   },
+   {
+    "dt": 5.0,
+    "surplus": 4340.4773,
+    "ratio": 73,
+    "mode": "Off",
+    "min_charge": 619
+   },
+   {
+    "dt": 300.0,
+    "surplus": 3426.9408,
+    "ratio": 73,
+    "mode": "Off",
+    "min_charge": 619
+   },
+   {
+    "dt": 10.0,
+    "surplus": 0.0,
+    "ratio": 73,
+    "mode": "Off",
+    "min_charge": 619
+   },
+   {
+    "dt": 18.715,
+    "surplus": 7667.9629,
+    "ratio": 73,
+    "mode": "Off",
+    "min_charge": 619
+   },
+   {
+    "dt": 30.0,
+    "surplus": 98.4749,
+    "ratio": 73,
+    "mode": "Off",
+    "min_charge": 619
+   },
+   {
+    "dt": 10.0,
+    "surplus": 23.9498,
+    "ratio": 73,
+    "mode": "Off",
+    "min_charge": 619
+   },
+   {
+    "dt": 5.0,
+    "surplus": 3507.8808,
+    "ratio": 73,
+    "mode": "Solar",
+    "min_charge": 619
+   },
+   {
+    "dt": 5.0,
+    "surplus": 0.0,
+    "ratio": 73,
+    "mode": "Solar",
+    "min_charge": 619
+   },
+   {
+    "dt": 5.0,
+    "surplus": 0.0,
+    "ratio": 73,
+    "mode": "Solar",
+    "min_charge": 619
+   },
+   {
+    "dt": 10.0,
+    "surplus": 23.6999,
+    "ratio": 73,
+    "mode": "Solar",
+    "min_charge": 619
+   },
+   {
+    "dt": 39.591,
+    "surplus": 5289.1186,
+    "ratio": 73,
+    "mode": "Solar",
+    "min_charge": 619
+   },
+   {
+    "dt": 1.0,
+    "surplus": -73.8762,
+    "ratio": 73,
+    "mode": "Solar",
+    "min_charge": 619
+   }
+  ],
+  "layer": "random",
+  "guards": "lagging current_limit (limit_step_w)",
+  "mutant_diff_tick": 7,
+  "key": "3d82484bbd381e21"
+ },
+ {
+  "knobs": {
+   "min_charge_w": 1400,
+   "hyst_w": 200,
+   "debounce_s": 15,
+   "solar_debounce_s": 300,
+   "average_n": 10,
+   "limit_step_w": 200,
+   "max_charge_w": 3680,
+   "ratio_fallback": 50.0
+  },
+  "ticks": [
+   {
+    "dt": 16.0,
+    "surplus": 1201.0,
+    "ratio": 100,
+    "mode": "Off",
+    "min_charge": 1400
+   },
+   {
+    "dt": 5.0,
+    "surplus": 1199.0,
+    "ratio": 100,
+    "mode": "Off",
+    "min_charge": 1400
+   },
+   {
+    "dt": 16.0,
+    "surplus": 1350.0,
+    "ratio": 100,
+    "mode": "Off",
+    "min_charge": 1400
+   },
+   {
+    "dt": 16.0,
+    "surplus": 1401.0,
+    "ratio": 100,
+    "mode": "Off",
+    "min_charge": 1400
+   },
+   {
+    "dt": 5.0,
+    "surplus": 1350.0,
+    "ratio": 100,
+    "mode": "Off",
+    "min_charge": 1400
+   },
+   {
+    "dt": 14.0,
+    "surplus": 1199.5,
+    "ratio": 100,
+    "mode": "Off",
+    "min_charge": 1400
+   },
+   {
+    "dt": 15.0,
+    "surplus": 1601.0,
+    "ratio": 100,
+    "mode": "Off",
+    "min_charge": 1400
+   },
+   {
+    "dt": 15.0,
+    "surplus": 1201.0,
+    "ratio": 100,
+    "mode": "Off",
+    "min_charge": 1400
+   },
+   {
+    "dt": 15.0,
+    "surplus": 1601.0,
+    "ratio": 100,
+    "mode": "Off",
+    "min_charge": 1400
+   },
+   {
+    "dt": 5.0,
+    "surplus": 1150.0,
+    "ratio": 100,
+    "mode": "Off",
+    "min_charge": 1400
+   },
+   {
+    "dt": 15.0,
+    "surplus": 1650.0,
+    "ratio": 100,
+    "mode": "Off",
+    "min_charge": 1400
+   },
+   {
+    "dt": 10.0,
+    "surplus": 1350.0,
+    "ratio": 100,
+    "mode": "Off",
+    "min_charge": 1400
+   },
+   {
+    "dt": 1.0,
+    "surplus": 1200.0,
+    "ratio": 100,
+    "mode": "Off",
+    "min_charge": 1400
+   },
+   {
+    "dt": 300.0,
+    "surplus": 1399.0,
+    "ratio": 100,
+    "mode": "Off",
+    "min_charge": 1400
+   },
+   {
+    "dt": 5.0,
+    "surplus": 1199.5,
+    "ratio": 100,
+    "mode": "Off",
+    "min_charge": 1400
+   },
+   {
+    "dt": 10.0,
+    "surplus": 1599.0,
+    "ratio": 59,
+    "mode": "Off",
+    "min_charge": 1400
+   },
+   {
+    "dt": 1.0,
+    "surplus": 2032.2034,
+    "ratio": 59,
+    "mode": "Off",
+    "min_charge": 1400
+   },
+   {
+    "dt": 300.0,
+    "surplus": 2713.5593,
+    "ratio": 59,
+    "mode": "Off",
+    "min_charge": 1400
+   },
+   {
+    "dt": 14.0,
+    "surplus": 2711.8644,
+    "ratio": 75,
+    "mode": "Off",
+    "min_charge": 1400
+   },
+   {
+    "dt": 10.0,
+    "surplus": 1533.3333,
+    "ratio": 75,
+    "mode": "Off",
+    "min_charge": 1400
+   },
+   {
+    "dt": 16.0,
+    "surplus": 1868.0,
+    "ratio": 75,
+    "mode": "Off",
+    "min_charge": 1400
+   },
+   {
+    "dt": 15.0,
+    "surplus": 2133.3333,
+    "ratio": 75,
+    "mode": "Solar",
+    "min_charge": 1400
+   },
+   {
+    "dt": 5.0,
+    "surplus": 1600.0,
+    "ratio": 75,
+    "mode": "Off",
+    "min_charge": 1400
+   },
+   {
+    "dt": 16.0,
+    "surplus": 2066.6667,
+    "ratio": 75,
+    "mode": "Off",
+    "min_charge": 1400
+   },
+   {
+    "dt": 14.0,
+    "surplus": 2134.0,
+    "ratio": 75,
+    "mode": "Off",
+    "min_charge": 1400
+   },
+   {
+    "dt": 1.0,
+    "surplus": 1598.6667,
+    "ratio": 75,
+    "mode": "Off",
+    "min_charge": 1400
+   },
+   {
+    "dt": 1.0,
+    "surplus": 1865.3333,
+    "ratio": 75,
+    "mode": "Off",
+    "min_charge": 1400
+   },
+   {
+    "dt": 1.0,
+    "surplus": 1865.3333,
+    "ratio": 75,
+    "mode": "Off",
+    "min_charge": 1400
+   },
+   {
+    "dt": 14.0,
+    "surplus": 1800.0,
+    "ratio": 32,
+    "mode": "Off",
+    "min_charge": 1400
+   },
+   {
+    "dt": 1.0,
+    "surplus": 5003.125,
+    "ratio": 32,
+    "mode": "Off",
+    "min_charge": 1400
+   },
+   {
+    "dt": 15.0,
+    "surplus": 4375.0,
+    "ratio": 32,
+    "mode": "Off",
+    "min_charge": 1400
+   },
+   {
+    "dt": 10.0,
+    "surplus": 4996.875,
+    "ratio": 32,
+    "mode": "Off",
+    "min_charge": 1400
+   },
+   {
+    "dt": 5.0,
+    "surplus": 4376.5625,
+    "ratio": 32,
+    "mode": "Off",
+    "min_charge": 1400
+   },
+   {
+    "dt": 5.0,
+    "surplus": 5003.125,
+    "ratio": 32,
+    "mode": "Automatisch",
+    "min_charge": 1400
+   },
+   {
+    "dt": 10.0,
+    "surplus": 4843.75,
+    "ratio": 32,
+    "mode": "Automatisch",
+    "min_charge": 1400
+   },
+   {
+    "dt": 15.0,
+    "surplus": 4843.75,
+    "ratio": 32,
+    "mode": "Automatisch",
+    "min_charge": 1400
+   },
+   {
+    "dt": 1.0,
+    "surplus": 3753.125,
+    "ratio": 32,
+    "mode": "Automatisch",
+    "min_charge": 1400
+   },
+   {
+    "dt": 5.0,
+    "surplus": 5001.5625,
+    "ratio": 32,
+    "mode": "Automatisch",
+    "min_charge": 1400
+   },
+   {
+    "dt": 15.0,
+    "surplus": 3753.125,
+    "ratio": 81,
+    "mode": "Automatisch",
+    "min_charge": 1400
+   },
+   {
+    "dt": 5.0,
+    "surplus": 1975.3086,
+    "ratio": 81,
+    "mode": "Automatisch",
+    "min_charge": 1400
+   }
+  ],
+  "layer": "threshold",
+  "guards": "Off freezes the moving average",
+  "mutant_diff_tick": 21,
+  "key": "e6b5c8d7a298f649"
+ },
+ {
+  "knobs": {
+   "min_charge_w": 1400,
+   "hyst_w": 1,
+   "debounce_s": 15,
+   "solar_debounce_s": 30,
+   "average_n": 5,
+   "limit_step_w": 1,
+   "max_charge_w": 7400,
+   "ratio_fallback": 50.0
+  },
+  "ticks": [
+   {
+    "dt": 10.0,
+    "surplus": 2898.0,
+    "ratio": 50,
+    "mode": "Off",
+    "min_charge": 1400
+   },
+   {
+    "dt": 1.0,
+    "surplus": 2799.0,
+    "ratio": 50,
+    "mode": "Off",
+    "min_charge": 1400
+   },
+   {
+    "dt": 5.0,
+    "surplus": 2801.0,
+    "ratio": 50,
+    "mode": "Off",
+    "min_charge": 1400
+   },
+   {
+    "dt": 300.0,
+    "surplus": 2798.0,
+    "ratio": 50,
+    "mode": "Off",
+    "min_charge": 1400
+   },
+   {
+    "dt": 5.0,
+    "surplus": 2797.0,
+    "ratio": 50,
+    "mode": "Automatisch",
+    "min_charge": 1400
+   },
+   {
+    "dt": 15.0,
+    "surplus": 2799.0,
+    "ratio": 50,
+    "mode": "Automatisch",
+    "min_charge": 1400
+   },
+   {
+    "dt": 14.0,
+    "surplus": 2804.0,
+    "ratio": 50,
+    "mode": "Automatisch",
+    "min_charge": 1400
+   },
+   {
+    "dt": 16.0,
+    "surplus": 2698.0,
+    "ratio": 50,
+    "mode": "Automatisch",
+    "min_charge": 1400
+   },
+   {
+    "dt": 5.0,
+    "surplus": 2804.0,
+    "ratio": 50,
+    "mode": "Automatisch",
+    "min_charge": 1400
+   },
+   {
+    "dt": 15.0,
+    "surplus": 2698.0,
+    "ratio": 50,
+    "mode": "Automatisch",
+    "min_charge": 1400
+   },
+   {
+    "dt": 5.0,
+    "surplus": 2798.0,
+    "ratio": 50,
+    "mode": "Automatisch",
+    "min_charge": 1400
+   },
+   {
+    "dt": 14.0,
+    "surplus": 2797.0,
+    "ratio": 50,
+    "mode": "Automatisch",
+    "min_charge": 1400
+   },
+   {
+    "dt": 10.0,
+    "surplus": 2803.0,
+    "ratio": 50,
+    "mode": "Automatisch",
+    "min_charge": 1400
+   },
+   {
+    "dt": 16.0,
+    "surplus": 2800.0,
+    "ratio": 50,
+    "mode": "Solar",
+    "min_charge": 1400
+   },
+   {
+    "dt": 31.0,
+    "surplus": 2800.0,
+    "ratio": 50,
+    "mode": "Solar",
+    "min_charge": 1400
+   },
+   {
+    "dt": 31.0,
+    "surplus": 2700.0,
+    "ratio": 50,
+    "mode": "Solar",
+    "min_charge": 1400
+   },
+   {
+    "dt": 30.0,
+    "surplus": 2900.0,
+    "ratio": 50,
+    "mode": "Solar",
+    "min_charge": 1400
+   },
+   {
+    "dt": 300.0,
+    "surplus": 2801.0,
+    "ratio": 50,
+    "mode": "Solar",
+    "min_charge": 1400
+   },
+   {
+    "dt": 10.0,
+    "surplus": 2798.0,
+    "ratio": 50,
+    "mode": "Solar",
+    "min_charge": 1400
+   },
+   {
+    "dt": 29.0,
+    "surplus": 2802.0,
+    "ratio": 50,
+    "mode": "Solar",
+    "min_charge": 1400
+   },
+   {
+    "dt": 30.0,
+    "surplus": 2797.0,
+    "ratio": 50,
+    "mode": "Solar",
+    "min_charge": 1400
+   },
+   {
+    "dt": 10.0,
+    "surplus": 2804.0,
+    "ratio": 50,
+    "mode": "Solar",
+    "min_charge": 1400
+   },
+   {
+    "dt": 10.0,
+    "surplus": 2802.0,
+    "ratio": 50,
+    "mode": "Solar",
+    "min_charge": 1400
+   },
+   {
+    "dt": 30.0,
+    "surplus": 2804.0,
+    "ratio": 50,
+    "mode": "Solar",
+    "min_charge": 1400
+   },
+   {
+    "dt": 5.0,
+    "surplus": 2800.0,
+    "ratio": 50,
+    "mode": "Solar",
+    "min_charge": 1400
+   },
+   {
+    "dt": 30.0,
+    "surplus": 2698.0,
+    "ratio": 50,
+    "mode": "Solar",
+    "min_charge": 1400
+   },
+   {
+    "dt": 30.0,
+    "surplus": 2800.0,
+    "ratio": 50,
+    "mode": "Solar",
+    "min_charge": 1400
+   },
+   {
+    "dt": 30.0,
+    "surplus": 2802.0,
+    "ratio": 50,
+    "mode": "Solar",
+    "min_charge": 1400
+   },
+   {
+    "dt": 31.0,
+    "surplus": 2902.0,
+    "ratio": 50,
+    "mode": "Solar",
+    "min_charge": 1400
+   },
+   {
+    "dt": 1.0,
+    "surplus": 2800.0,
+    "ratio": 50,
+    "mode": "Solar",
+    "min_charge": 1400
+   },
+   {
+    "dt": 10.0,
+    "surplus": 2898.0,
+    "ratio": 50,
+    "mode": "Solar",
+    "min_charge": 1400
+   },
+   {
+    "dt": 10.0,
+    "surplus": 2799.0,
+    "ratio": 50,
+    "mode": "Solar",
+    "min_charge": 1400
+   },
+   {
+    "dt": 1.0,
+    "surplus": 2799.0,
+    "ratio": 50,
+    "mode": "Solar",
+    "min_charge": 1400
+   },
+   {
+    "dt": 1.0,
+    "surplus": 2801.0,
+    "ratio": 50,
+    "mode": "Solar",
+    "min_charge": 1400
+   },
+   {
+    "dt": 29.0,
+    "surplus": 2800.0,
+    "ratio": 50,
+    "mode": "Solar",
+    "min_charge": 1400
+   },
+   {
+    "dt": 1.0,
+    "surplus": 2800.0,
+    "ratio": 50,
+    "mode": "Solar",
+    "min_charge": 1400
+   },
+   {
+    "dt": 30.0,
+    "surplus": 2801.0,
+    "ratio": 50,
+    "mode": "Solar",
+    "min_charge": 1400
+   },
+   {
+    "dt": 30.0,
+    "surplus": 2802.0,
+    "ratio": 50,
+    "mode": "Solar",
+    "min_charge": 1400
+   },
+   {
+    "dt": 30.0,
+    "surplus": 2796.0,
+    "ratio": 50,
+    "mode": "Automatisch",
+    "min_charge": 1400
+   },
+   {
+    "dt": 10.0,
+    "surplus": 2799.0,
+    "ratio": 50,
+    "mode": "Automatisch",
+    "min_charge": 1400
+   }
+  ],
+  "layer": "threshold",
+  "guards": "Off freezes the moving average",
+  "mutant_diff_tick": 4,
+  "key": "89ac5a12315e70ce"
+ },
+ {
+  "knobs": {
+   "min_charge_w": 700,
+   "hyst_w": 1,
+   "debounce_s": 0,
+   "solar_debounce_s": 30,
+   "average_n": 2,
+   "limit_step_w": 50,
+   "max_charge_w": 3680,
+   "ratio_fallback": 50.0
+  },
+  "ticks": [
+   {
+    "dt": 10.0,
+    "surplus": 1400.0,
+    "ratio": 50,
+    "mode": "Automatisch",
+    "min_charge": 700
+   },
+   {
+    "dt": 10.0,
+    "surplus": 1400.0,
+    "ratio": 50,
+    "mode": "Automatisch",
+    "min_charge": 700
+   },
+   {
+    "dt": 0.0,
+    "surplus": 1402.0,
+    "ratio": 50,
+    "mode": "Automatisch",
+    "min_charge": 700
+   },
+   {
+    "dt": 300.0,
+    "surplus": 1396.0,
+    "ratio": 50,
+    "mode": "Off",
+    "min_charge": 700
+   },
+   {
+    "dt": 5.0,
+    "surplus": 1300.0,
+    "ratio": 50,
+    "mode": "Off",
+    "min_charge": 700
+   },
+   {
+    "dt": 1.0,
+    "surplus": 1401.0,
+    "ratio": 50,
+    "mode": "Off",
+    "min_charge": 700
+   },
+   {
+    "dt": 300.0,
+    "surplus": 1498.0,
+    "ratio": 50,
+    "mode": "Off",
+    "min_charge": 700
+   },
+   {
+    "dt": 10.0,
+    "surplus": 1404.0,
+    "ratio": 50,
+    "mode": "Automatisch",
+    "min_charge": 700
+   },
+   {
+    "dt": 10.0,
+    "surplus": 1401.0,
+    "ratio": 50,
+    "mode": "Automatisch",
+    "min_charge": 700
+   },
+   {
+    "dt": 0.0,
+    "surplus": 1300.0,
+    "ratio": 50,
+    "mode": "Automatisch",
+    "min_charge": 700
+   },
+   {
+    "dt": 0.0,
+    "surplus": 1400.0,
+    "ratio": 50,
+    "mode": "Automatisch",
+    "min_charge": 700
+   },
+   {
+    "dt": 10.0,
+    "surplus": 1298.0,
+    "ratio": 50,
+    "mode": "Automatisch",
+    "min_charge": 700
+   },
+   {
+    "dt": 0.0,
+    "surplus": 1300.0,
+    "ratio": 50,
+    "mode": "Automatisch",
+    "min_charge": 700
+   },
+   {
+    "dt": 10.0,
+    "surplus": 1401.0,
+    "ratio": 50,
+    "mode": "Automatisch",
+    "min_charge": 700
+   },
+   {
+    "dt": 5.0,
+    "surplus": 1302.0,
+    "ratio": 50,
+    "mode": "Automatisch",
+    "min_charge": 700
+   },
+   {
+    "dt": 1.0,
+    "surplus": 1399.0,
+    "ratio": 50,
+    "mode": "Off",
+    "min_charge": 700
+   },
+   {
+    "dt": 0.0,
+    "surplus": 1400.0,
+    "ratio": 50,
+    "mode": "Off",
+    "min_charge": 700
+   },
+   {
+    "dt": 0.0,
+    "surplus": 1401.0,
+    "ratio": 50,
+    "mode": "Off",
+    "min_charge": 700
+   },
+   {
+    "dt": 10.0,
+    "surplus": 1399.0,
+    "ratio": 50,
+    "mode": "Off",
+    "min_charge": 700
+   },
+   {
+    "dt": 0.0,
+    "surplus": 1401.0,
+    "ratio": 50,
+    "mode": "Off",
+    "min_charge": 700
+   },
+   {
+    "dt": 0.0,
+    "surplus": 1397.0,
+    "ratio": 50,
+    "mode": "Off",
+    "min_charge": 700
+   },
+   {
+    "dt": 0.0,
+    "surplus": 1398.0,
+    "ratio": 50,
+    "mode": "Off",
+    "min_charge": 700
+   },
+   {
+    "dt": 10.0,
+    "surplus": 1498.0,
+    "ratio": 50,
+    "mode": "Off",
+    "min_charge": 700
+   },
+   {
+    "dt": 0.0,
+    "surplus": 1401.0,
+    "ratio": 50,
+    "mode": "Off",
+    "min_charge": 700
+   },
+   {
+    "dt": 5.0,
+    "surplus": 1400.0,
+    "ratio": 61,
+    "mode": "Off",
+    "min_charge": 700
+   },
+   {
+    "dt": 0.0,
+    "surplus": 1065.5738,
+    "ratio": 61,
+    "mode": "Off",
+    "min_charge": 700
+   },
+   {
+    "dt": 1.0,
+    "surplus": 1147.541,
+    "ratio": 61,
+    "mode": "Automatisch",
+    "min_charge": 700
+   },
+   {
+    "dt": 300.0,
+    "surplus": 1146.7213,
+    "ratio": 61,
+    "mode": "Automatisch",
+    "min_charge": 700
+   },
+   {
+    "dt": 0.0,
+    "surplus": 1148.3607,
+    "ratio": 61,
+    "mode": "Automatisch",
+    "min_charge": 700
+   },
+   {
+    "dt": 0.0,
+    "surplus": 1067.2131,
+    "ratio": 61,
+    "mode": "Automatisch",
+    "min_charge": 700
+   },
+   {
+    "dt": 5.0,
+    "surplus": 1227.8689,
+    "ratio": 61,
+    "mode": "Automatisch",
+    "min_charge": 700
+   },
+   {
+    "dt": 10.0,
+    "surplus": 1148.3607,
+    "ratio": 61,
+    "mode": "Automatisch",
+    "min_charge": 700
+   },
+   {
+    "dt": 1.0,
+    "surplus": 1145.082,
+    "ratio": 61,
+    "mode": "Off",
+    "min_charge": 700
+   },
+   {
+    "dt": 0.0,
+    "surplus": 1144.2623,
+    "ratio": 61,
+    "mode": "Off",
+    "min_charge": 700
+   },
+   {
+    "dt": 10.0,
+    "surplus": 1146.7213,
+    "ratio": 61,
+    "mode": "Off",
+    "min_charge": 700
+   },
+   {
+    "dt": 0.0,
+    "surplus": 1227.8689,
+    "ratio": 61,
+    "mode": "Off",
+    "min_charge": 700
+   },
+   {
+    "dt": 300.0,
+    "surplus": 1145.9016,
+    "ratio": 61,
+    "mode": "Off",
+    "min_charge": 700
+   },
+   {
+    "dt": 10.0,
+    "surplus": 1227.8689,
+    "ratio": 61,
+    "mode": "Off",
+    "min_charge": 700
+   },
+   {
+    "dt": 5.0,
+    "surplus": 1145.9016,
+    "ratio": 65,
+    "mode": "Off",
+    "min_charge": 700
+   },
+   {
+    "dt": 0.0,
+    "surplus": 1076.1538,
+    "ratio": 65,
+    "mode": "Off",
+    "min_charge": 700
+   }
+  ],
+  "layer": "threshold",
+  "guards": "Off freezes the moving average",
+  "mutant_diff_tick": 7,
+  "key": "7b7282b5774090b9"
+ },
+ {
+  "knobs": {
+   "min_charge_w": 700,
+   "hyst_w": 50,
+   "debounce_s": 15,
+   "solar_debounce_s": 600,
+   "average_n": 5,
+   "limit_step_w": 1,
+   "max_charge_w": 7360,
+   "ratio_fallback": 50.0
+  },
+  "ticks": [
+   {
+    "dt": 10.0,
+    "surplus": 750.0,
+    "ratio": 80,
+    "mode": "Off",
+    "min_charge": 700
+   },
+   {
+    "dt": 5.0,
+    "surplus": 876.25,
+    "ratio": 80,
+    "mode": "Off",
+    "min_charge": 700
+   },
+   {
+    "dt": 5.0,
+    "surplus": 812.5,
+    "ratio": 80,
+    "mode": "Off",
+    "min_charge": 700
+   },
+   {
+    "dt": 16.0,
+    "surplus": 813.125,
+    "ratio": 80,
+    "mode": "Off",
+    "min_charge": 700
+   },
+   {
+    "dt": 5.0,
+    "surplus": 937.5,
+    "ratio": 80,
+    "mode": "Off",
+    "min_charge": 700
+   },
+   {
+    "dt": 5.0,
+    "surplus": 874.375,
+    "ratio": 80,
+    "mode": "Off",
+    "min_charge": 700
+   },
+   {
+    "dt": 14.0,
+    "surplus": 750.0,
+    "ratio": 80,
+    "mode": "Off",
+    "min_charge": 700
+   },
+   {
+    "dt": 10.0,
+    "surplus": 936.875,
+    "ratio": 80,
+    "mode": "Off",
+    "min_charge": 700
+   },
+   {
+    "dt": 15.0,
+    "surplus": 811.875,
+    "ratio": 80,
+    "mode": "Automatisch",
+    "min_charge": 700
+   },
+   {
+    "dt": 15.0,
+    "surplus": 873.75,
+    "ratio": 80,
+    "mode": "Automatisch",
+    "min_charge": 700
+   },
+   {
+    "dt": 1.0,
+    "surplus": 937.5,
+    "ratio": 80,
+    "mode": "Automatisch",
+    "min_charge": 700
+   },
+   {
+    "dt": 1.0,
+    "surplus": 937.5,
+    "ratio": 80,
+    "mode": "Automatisch",
+    "min_charge": 700
+   },
+   {
+    "dt": 300.0,
+    "surplus": 937.5,
+    "ratio": 80,
+    "mode": "Automatisch",
+    "min_charge": 700
+   },
+   {
+    "dt": 16.0,
+    "surplus": 812.5,
+    "ratio": 80,
+    "mode": "Automatisch",
+    "min_charge": 700
+   },
+   {
+    "dt": 5.0,
+    "surplus": 936.875,
+    "ratio": 80,
+    "mode": "Automatisch",
+    "min_charge": 700
+   },
+   {
+    "dt": 5.0,
+    "surplus": 937.5,
+    "ratio": 80,
+    "mode": "Automatisch",
+    "min_charge": 700
+   },
+   {
+    "dt": 300.0,
+    "surplus": 936.875,
+    "ratio": 80,
+    "mode": "Automatisch",
+    "min_charge": 700
+   },
+   {
+    "dt": 15.0,
+    "surplus": 813.75,
+    "ratio": 80,
+    "mode": "Automatisch",
+    "min_charge": 700
+   },
+   {
+    "dt": 16.0,
+    "surplus": 813.125,
+    "ratio": 80,
+    "mode": "Automatisch",
+    "min_charge": 700
+   },
+   {
+    "dt": 300.0,
+    "surplus": 937.5,
+    "ratio": 80,
+    "mode": "Automatisch",
+    "min_charge": 700
+   },
+   {
+    "dt": 16.0,
+    "surplus": 874.375,
+    "ratio": 80,
+    "mode": "Automatisch",
+    "min_charge": 700
+   },
+   {
+    "dt": 15.0,
+    "surplus": 1000.0,
+    "ratio": 80,
+    "mode": "Automatisch",
+    "min_charge": 700
+   },
+   {
+    "dt": 5.0,
+    "surplus": 938.125,
+    "ratio": 80,
+    "mode": "Off",
+    "min_charge": 700
+   },
+   {
+    "dt": 300.0,
+    "surplus": 876.25,
+    "ratio": 80,
+    "mode": "Off",
+    "min_charge": 700
+   },
+   {
+    "dt": 300.0,
+    "surplus": 813.125,
+    "ratio": 80,
+    "mode": "Off",
+    "min_charge": 700
+   },
+   {
+    "dt": 5.0,
+    "surplus": 873.75,
+    "ratio": 80,
+    "mode": "Off",
+    "min_charge": 700
+   },
+   {
+    "dt": 10.0,
+    "surplus": 875.0,
+    "ratio": 80,
+    "mode": "Off",
+    "min_charge": 700
+   },
+   {
+    "dt": 1.0,
+    "surplus": 813.125,
+    "ratio": 92,
+    "mode": "Off",
+    "min_charge": 700
+   },
+   {
+    "dt": 16.0,
+    "surplus": 759.7826,
+    "ratio": 92,
+    "mode": "Automatisch",
+    "min_charge": 700
+   },
+   {
+    "dt": 5.0,
+    "surplus": 761.413,
+    "ratio": 92,
+    "mode": "Automatisch",
+    "min_charge": 700
+   },
+   {
+    "dt": 300.0,
+    "surplus": 869.5652,
+    "ratio": 92,
+    "mode": "Automatisch",
+    "min_charge": 700
+   },
+   {
+    "dt": 5.0,
+    "surplus": 814.6739,
+    "ratio": 92,
+    "mode": "Automatisch",
+    "min_charge": 700
+   },
+   {
+    "dt": 5.0,
+    "surplus": 816.3043,
+    "ratio": 92,
+    "mode": "Automatisch",
+    "min_charge": 700
+   },
+   {
+    "dt": 300.0,
+    "surplus": 760.3261,
+    "ratio": 92,
+    "mode": "Automatisch",
+    "min_charge": 700
+   },
+   {
+    "dt": 1.0,
+    "surplus": 814.6739,
+    "ratio": 87,
+    "mode": "Automatisch",
+    "min_charge": 700
+   },
+   {
+    "dt": 16.0,
+    "surplus": 919.5402,
+    "ratio": 87,
+    "mode": "Automatisch",
+    "min_charge": 700
+   },
+   {
+    "dt": 14.0,
+    "surplus": 804.023,
+    "ratio": 87,
+    "mode": "Automatisch",
+    "min_charge": 700
+   },
+   {
+    "dt": 5.0,
+    "surplus": 748.2759,
+    "ratio": 87,
+    "mode": "Automatisch",
+    "min_charge": 700
+   },
+   {
+    "dt": 5.0,
+    "surplus": 863.2184,
+    "ratio": 87,
+    "mode": "Off",
+    "min_charge": 700
+   },
+   {
+    "dt": 300.0,
+    "surplus": 746.5517,
+    "ratio": 87,
+    "mode": "Off",
+    "min_charge": 700
+   }
+  ],
+  "layer": "threshold",
+  "guards": "Off freezes the moving average",
+  "mutant_diff_tick": 11,
+  "key": "3e74cbb9c2acea30"
+ },
+ {
+  "knobs": {
+   "min_charge_w": 1400,
+   "hyst_w": 200,
+   "debounce_s": 15,
+   "solar_debounce_s": 300,
+   "average_n": 10,
+   "limit_step_w": 200,
+   "max_charge_w": 3680,
+   "ratio_fallback": 50.0
+  },
+  "ticks": [
+   {
+    "dt": 16.0,
+    "surplus": 1201.0,
+    "ratio": 100,
+    "mode": "Off",
+    "min_charge": 1400
+   },
+   {
+    "dt": 5.0,
+    "surplus": 1199.0,
+    "ratio": 100,
+    "mode": "Off",
+    "min_charge": 1400
+   },
+   {
+    "dt": 16.0,
+    "surplus": 1350.0,
+    "ratio": 100,
+    "mode": "Off",
+    "min_charge": 1400
+   },
+   {
+    "dt": 16.0,
+    "surplus": 1401.0,
+    "ratio": 100,
+    "mode": "Off",
+    "min_charge": 1400
+   },
+   {
+    "dt": 5.0,
+    "surplus": 1350.0,
+    "ratio": 100,
+    "mode": "Off",
+    "min_charge": 1400
+   },
+   {
+    "dt": 14.0,
+    "surplus": 1199.5,
+    "ratio": 100,
+    "mode": "Off",
+    "min_charge": 1400
+   },
+   {
+    "dt": 15.0,
+    "surplus": 1601.0,
+    "ratio": 100,
+    "mode": "Off",
+    "min_charge": 1400
+   },
+   {
+    "dt": 15.0,
+    "surplus": 1201.0,
+    "ratio": 100,
+    "mode": "Off",
+    "min_charge": 1400
+   },
+   {
+    "dt": 15.0,
+    "surplus": 1601.0,
+    "ratio": 100,
+    "mode": "Off",
+    "min_charge": 1400
+   },
+   {
+    "dt": 5.0,
+    "surplus": 1150.0,
+    "ratio": 100,
+    "mode": "Off",
+    "min_charge": 1400
+   },
+   {
+    "dt": 15.0,
+    "surplus": 1650.0,
+    "ratio": 100,
+    "mode": "Off",
+    "min_charge": 1400
+   },
+   {
+    "dt": 10.0,
+    "surplus": 1350.0,
+    "ratio": 100,
+    "mode": "Off",
+    "min_charge": 1400
+   },
+   {
+    "dt": 1.0,
+    "surplus": 1200.0,
+    "ratio": 100,
+    "mode": "Off",
+    "min_charge": 1400
+   },
+   {
+    "dt": 300.0,
+    "surplus": 1399.0,
+    "ratio": 100,
+    "mode": "Off",
+    "min_charge": 1400
+   },
+   {
+    "dt": 5.0,
+    "surplus": 1199.5,
+    "ratio": 100,
+    "mode": "Off",
+    "min_charge": 1400
+   },
+   {
+    "dt": 10.0,
+    "surplus": 1599.0,
+    "ratio": 59,
+    "mode": "Off",
+    "min_charge": 1400
+   },
+   {
+    "dt": 1.0,
+    "surplus": 2032.2034,
+    "ratio": 59,
+    "mode": "Off",
+    "min_charge": 1400
+   },
+   {
+    "dt": 300.0,
+    "surplus": 2713.5593,
+    "ratio": 59,
+    "mode": "Off",
+    "min_charge": 1400
+   },
+   {
+    "dt": 14.0,
+    "surplus": 2711.8644,
+    "ratio": 75,
+    "mode": "Off",
+    "min_charge": 1400
+   },
+   {
+    "dt": 10.0,
+    "surplus": 1533.3333,
+    "ratio": 75,
+    "mode": "Off",
+    "min_charge": 1400
+   },
+   {
+    "dt": 16.0,
+    "surplus": 1868.0,
+    "ratio": 75,
+    "mode": "Off",
+    "min_charge": 1400
+   },
+   {
+    "dt": 15.0,
+    "surplus": 2133.3333,
+    "ratio": 75,
+    "mode": "Solar",
+    "min_charge": 1400
+   },
+   {
+    "dt": 5.0,
+    "surplus": 1600.0,
+    "ratio": 75,
+    "mode": "Off",
+    "min_charge": 1400
+   },
+   {
+    "dt": 16.0,
+    "surplus": 2066.6667,
+    "ratio": 75,
+    "mode": "Off",
+    "min_charge": 1400
+   },
+   {
+    "dt": 14.0,
+    "surplus": 2134.0,
+    "ratio": 75,
+    "mode": "Off",
+    "min_charge": 1400
+   },
+   {
+    "dt": 1.0,
+    "surplus": 1598.6667,
+    "ratio": 75,
+    "mode": "Off",
+    "min_charge": 1400
+   },
+   {
+    "dt": 1.0,
+    "surplus": 1865.3333,
+    "ratio": 75,
+    "mode": "Off",
+    "min_charge": 1400
+   },
+   {
+    "dt": 1.0,
+    "surplus": 1865.3333,
+    "ratio": 75,
+    "mode": "Off",
+    "min_charge": 1400
+   },
+   {
+    "dt": 14.0,
+    "surplus": 1800.0,
+    "ratio": 32,
+    "mode": "Off",
+    "min_charge": 1400
+   },
+   {
+    "dt": 1.0,
+    "surplus": 5003.125,
+    "ratio": 32,
+    "mode": "Off",
+    "min_charge": 1400
+   },
+   {
+    "dt": 15.0,
+    "surplus": 4375.0,
+    "ratio": 32,
+    "mode": "Off",
+    "min_charge": 1400
+   },
+   {
+    "dt": 10.0,
+    "surplus": 4996.875,
+    "ratio": 32,
+    "mode": "Off",
+    "min_charge": 1400
+   },
+   {
+    "dt": 5.0,
+    "surplus": 4376.5625,
+    "ratio": 32,
+    "mode": "Off",
+    "min_charge": 1400
+   },
+   {
+    "dt": 5.0,
+    "surplus": 5003.125,
+    "ratio": 32,
+    "mode": "Automatisch",
+    "min_charge": 1400
+   },
+   {
+    "dt": 10.0,
+    "surplus": 4843.75,
+    "ratio": 32,
+    "mode": "Automatisch",
+    "min_charge": 1400
+   },
+   {
+    "dt": 15.0,
+    "surplus": 4843.75,
+    "ratio": 32,
+    "mode": "Automatisch",
+    "min_charge": 1400
+   },
+   {
+    "dt": 1.0,
+    "surplus": 3753.125,
+    "ratio": 32,
+    "mode": "Automatisch",
+    "min_charge": 1400
+   },
+   {
+    "dt": 5.0,
+    "surplus": 5001.5625,
+    "ratio": 32,
+    "mode": "Automatisch",
+    "min_charge": 1400
+   },
+   {
+    "dt": 15.0,
+    "surplus": 3753.125,
+    "ratio": 81,
+    "mode": "Automatisch",
+    "min_charge": 1400
+   },
+   {
+    "dt": 5.0,
+    "surplus": 1975.3086,
+    "ratio": 81,
+    "mode": "Automatisch",
+    "min_charge": 1400
+   }
+  ],
+  "layer": "threshold",
+  "guards": "average_n is a sample count",
+  "mutant_diff_tick": 33,
+  "key": "e6b5c8d7a298f649"
+ },
+ {
+  "knobs": {
+   "min_charge_w": 296,
+   "hyst_w": 77,
+   "debounce_s": 463,
+   "solar_debounce_s": 559,
+   "average_n": 12,
+   "limit_step_w": 377,
+   "max_charge_w": 2000,
+   "ratio_fallback": 50.0
+  },
+  "ticks": [
+   {
+    "dt": 1.0,
+    "surplus": 58.6533,
+    "ratio": 94,
+    "mode": "Solar",
+    "min_charge": 296
+   },
+   {
+    "dt": 300.0,
+    "surplus": -0.0,
+    "ratio": 94,
+    "mode": "Solar",
+    "min_charge": 296
+   },
+   {
+    "dt": 1.0,
+    "surplus": 4697.5359,
+    "ratio": 94,
+    "mode": "Solar",
+    "min_charge": 296
+   },
+   {
+    "dt": 5.0,
+    "surplus": 16.1906,
+    "ratio": 94,
+    "mode": "Solar",
+    "min_charge": 296
+   },
+   {
+    "dt": 5.0,
+    "surplus": 1412.5849,
+    "ratio": 94,
+    "mode": "Solar",
+    "min_charge": 296
+   },
+   {
+    "dt": 300.0,
+    "surplus": -48.834,
+    "ratio": 94,
+    "mode": "Solar",
+    "min_charge": 296
+   },
+   {
+    "dt": 10.0,
+    "surplus": -31.4951,
+    "ratio": 94,
+    "mode": "Solar",
+    "min_charge": 296
+   },
+   {
+    "dt": 30.0,
+    "surplus": 4975.9044,
+    "ratio": 94,
+    "mode": "Solar",
+    "min_charge": 296
+   },
+   {
+    "dt": 10.0,
+    "surplus": 0.0,
+    "ratio": 94,
+    "mode": "Solar",
+    "min_charge": 296
+   },
+   {
+    "dt": 1.0,
+    "surplus": 85.1464,
+    "ratio": 94,
+    "mode": "Solar",
+    "min_charge": 296
+   },
+   {
+    "dt": 10.0,
+    "surplus": 7260.9225,
+    "ratio": 90,
+    "mode": "Solar",
+    "min_charge": 296
+   },
+   {
+    "dt": 5.0,
+    "surplus": 0.0,
+    "ratio": 90,
+    "mode": "Solar",
+    "min_charge": 296
+   },
+   {
+    "dt": 5.0,
+    "surplus": 6461.3445,
+    "ratio": 90,
+    "mode": "Solar",
+    "min_charge": 296
+   },
+   {
+    "dt": 12.284,
+    "surplus": 0.0,
+    "ratio": 90,
+    "mode": "Solar",
+    "min_charge": 296
+   },
+   {
+    "dt": 10.0,
+    "surplus": -1881.5666,
+    "ratio": 90,
+    "mode": "Solar",
+    "min_charge": 296
+   },
+   {
+    "dt": 300.0,
+    "surplus": 0.0832,
+    "ratio": 90,
+    "mode": "Solar",
+    "min_charge": 296
+   },
+   {
+    "dt": 300.0,
+    "surplus": 44.4754,
+    "ratio": 70,
+    "mode": "Solar",
+    "min_charge": 296
+   },
+   {
+    "dt": 5.0,
+    "surplus": 75.8642,
+    "ratio": 70,
+    "mode": "Solar",
+    "min_charge": 296
+   },
+   {
+    "dt": 1.0,
+    "surplus": 6781.3694,
+    "ratio": 70,
+    "mode": "Solar",
+    "min_charge": 296
+   },
+   {
+    "dt": 54.644,
+    "surplus": 58.1574,
+    "ratio": 70,
+    "mode": "Solar",
+    "min_charge": 296
+   },
+   {
+    "dt": 5.0,
+    "surplus": 10.0604,
+    "ratio": 70,
+    "mode": "Solar",
+    "min_charge": 296
+   },
+   {
+    "dt": 5.0,
+    "surplus": -0.0,
+    "ratio": 70,
+    "mode": "Solar",
+    "min_charge": 296
+   },
+   {
+    "dt": 1.0,
+    "surplus": 0.0,
+    "ratio": 70,
+    "mode": "Solar",
+    "min_charge": 296
+   },
+   {
+    "dt": 30.0,
+    "surplus": -12.1156,
+    "ratio": 70,
+    "mode": "Solar",
+    "min_charge": 296
+   },
+   {
+    "dt": 23.182,
+    "surplus": -0.0,
+    "ratio": 70,
+    "mode": "Solar",
+    "min_charge": 296
+   },
+   {
+    "dt": 1.0,
+    "surplus": 0.0,
+    "ratio": 70,
+    "mode": "Solar",
+    "min_charge": 296
+   },
+   {
+    "dt": 30.0,
+    "surplus": 0.0,
+    "ratio": 70,
+    "mode": "Solar",
+    "min_charge": 296
+   },
+   {
+    "dt": 30.0,
+    "surplus": 0.0,
+    "ratio": 70,
+    "mode": "Solar",
+    "min_charge": 296
+   },
+   {
+    "dt": 10.0,
+    "surplus": -19.1681,
+    "ratio": 70,
+    "mode": "Solar",
+    "min_charge": 296
+   },
+   {
+    "dt": 30.0,
+    "surplus": 7906.1102,
+    "ratio": 70,
+    "mode": "Automatisch",
+    "min_charge": 296
+   },
+   {
+    "dt": 300.0,
+    "surplus": 6572.1773,
+    "ratio": 70,
+    "mode": "Automatisch",
+    "min_charge": 296
+   },
+   {
+    "dt": 35.143,
+    "surplus": -0.0,
+    "ratio": 70,
+    "mode": "Automatisch",
+    "min_charge": 296
+   },
+   {
+    "dt": 1.0,
+    "surplus": 175.0173,
+    "ratio": 70,
+    "mode": "Automatisch",
+    "min_charge": 296
+   },
+   {
+    "dt": 5.0,
+    "surplus": 0.0,
+    "ratio": 70,
+    "mode": "Automatisch",
+    "min_charge": 296
+   },
+   {
+    "dt": 5.0,
+    "surplus": 0.0,
+    "ratio": 70,
+    "mode": "Automatisch",
+    "min_charge": 296
+   },
+   {
+    "dt": 5.0,
+    "surplus": 8150.4367,
+    "ratio": 70,
+    "mode": "Automatisch",
+    "min_charge": 296
+   },
+   {
+    "dt": 5.0,
+    "surplus": -0.0,
+    "ratio": 70,
+    "mode": "Automatisch",
+    "min_charge": 296
+   },
+   {
+    "dt": 21.776,
+    "surplus": 0.0,
+    "ratio": 70,
+    "mode": "Automatisch",
+    "min_charge": 296
+   },
+   {
+    "dt": 50.06,
+    "surplus": 0.0,
+    "ratio": 97,
+    "mode": "Off",
+    "min_charge": 296
+   },
+   {
+    "dt": 5.0,
+    "surplus": 2.9649,
+    "ratio": 97,
+    "mode": "Off",
+    "min_charge": 296
+   }
+  ],
+  "layer": "random",
+  "guards": "average_n is a sample count",
+  "mutant_diff_tick": 2,
+  "key": "c6c5572efe14b3fb"
+ },
+ {
+  "knobs": {
+   "min_charge_w": 1400,
+   "hyst_w": 1,
+   "debounce_s": 15,
+   "solar_debounce_s": 30,
+   "average_n": 5,
+   "limit_step_w": 1,
+   "max_charge_w": 7400,
+   "ratio_fallback": 50.0
+  },
+  "ticks": [
+   {
+    "dt": 10.0,
+    "surplus": 2898.0,
+    "ratio": 50,
+    "mode": "Off",
+    "min_charge": 1400
+   },
+   {
+    "dt": 1.0,
+    "surplus": 2799.0,
+    "ratio": 50,
+    "mode": "Off",
+    "min_charge": 1400
+   },
+   {
+    "dt": 5.0,
+    "surplus": 2801.0,
+    "ratio": 50,
+    "mode": "Off",
+    "min_charge": 1400
+   },
+   {
+    "dt": 300.0,
+    "surplus": 2798.0,
+    "ratio": 50,
+    "mode": "Off",
+    "min_charge": 1400
+   },
+   {
+    "dt": 5.0,
+    "surplus": 2797.0,
+    "ratio": 50,
+    "mode": "Automatisch",
+    "min_charge": 1400
+   },
+   {
+    "dt": 15.0,
+    "surplus": 2799.0,
+    "ratio": 50,
+    "mode": "Automatisch",
+    "min_charge": 1400
+   },
+   {
+    "dt": 14.0,
+    "surplus": 2804.0,
+    "ratio": 50,
+    "mode": "Automatisch",
+    "min_charge": 1400
+   },
+   {
+    "dt": 16.0,
+    "surplus": 2698.0,
+    "ratio": 50,
+    "mode": "Automatisch",
+    "min_charge": 1400
+   },
+   {
+    "dt": 5.0,
+    "surplus": 2804.0,
+    "ratio": 50,
+    "mode": "Automatisch",
+    "min_charge": 1400
+   },
+   {
+    "dt": 15.0,
+    "surplus": 2698.0,
+    "ratio": 50,
+    "mode": "Automatisch",
+    "min_charge": 1400
+   },
+   {
+    "dt": 5.0,
+    "surplus": 2798.0,
+    "ratio": 50,
+    "mode": "Automatisch",
+    "min_charge": 1400
+   },
+   {
+    "dt": 14.0,
+    "surplus": 2797.0,
+    "ratio": 50,
+    "mode": "Automatisch",
+    "min_charge": 1400
+   },
+   {
+    "dt": 10.0,
+    "surplus": 2803.0,
+    "ratio": 50,
+    "mode": "Automatisch",
+    "min_charge": 1400
+   },
+   {
+    "dt": 16.0,
+    "surplus": 2800.0,
+    "ratio": 50,
+    "mode": "Solar",
+    "min_charge": 1400
+   },
+   {
+    "dt": 31.0,
+    "surplus": 2800.0,
+    "ratio": 50,
+    "mode": "Solar",
+    "min_charge": 1400
+   },
+   {
+    "dt": 31.0,
+    "surplus": 2700.0,
+    "ratio": 50,
+    "mode": "Solar",
+    "min_charge": 1400
+   },
+   {
+    "dt": 30.0,
+    "surplus": 2900.0,
+    "ratio": 50,
+    "mode": "Solar",
+    "min_charge": 1400
+   },
+   {
+    "dt": 300.0,
+    "surplus": 2801.0,
+    "ratio": 50,
+    "mode": "Solar",
+    "min_charge": 1400
+   },
+   {
+    "dt": 10.0,
+    "surplus": 2798.0,
+    "ratio": 50,
+    "mode": "Solar",
+    "min_charge": 1400
+   },
+   {
+    "dt": 29.0,
+    "surplus": 2802.0,
+    "ratio": 50,
+    "mode": "Solar",
+    "min_charge": 1400
+   },
+   {
+    "dt": 30.0,
+    "surplus": 2797.0,
+    "ratio": 50,
+    "mode": "Solar",
+    "min_charge": 1400
+   },
+   {
+    "dt": 10.0,
+    "surplus": 2804.0,
+    "ratio": 50,
+    "mode": "Solar",
+    "min_charge": 1400
+   },
+   {
+    "dt": 10.0,
+    "surplus": 2802.0,
+    "ratio": 50,
+    "mode": "Solar",
+    "min_charge": 1400
+   },
+   {
+    "dt": 30.0,
+    "surplus": 2804.0,
+    "ratio": 50,
+    "mode": "Solar",
+    "min_charge": 1400
+   },
+   {
+    "dt": 5.0,
+    "surplus": 2800.0,
+    "ratio": 50,
+    "mode": "Solar",
+    "min_charge": 1400
+   },
+   {
+    "dt": 30.0,
+    "surplus": 2698.0,
+    "ratio": 50,
+    "mode": "Solar",
+    "min_charge": 1400
+   },
+   {
+    "dt": 30.0,
+    "surplus": 2800.0,
+    "ratio": 50,
+    "mode": "Solar",
+    "min_charge": 1400
+   },
+   {
+    "dt": 30.0,
+    "surplus": 2802.0,
+    "ratio": 50,
+    "mode": "Solar",
+    "min_charge": 1400
+   },
+   {
+    "dt": 31.0,
+    "surplus": 2902.0,
+    "ratio": 50,
+    "mode": "Solar",
+    "min_charge": 1400
+   },
+   {
+    "dt": 1.0,
+    "surplus": 2800.0,
+    "ratio": 50,
+    "mode": "Solar",
+    "min_charge": 1400
+   },
+   {
+    "dt": 10.0,
+    "surplus": 2898.0,
+    "ratio": 50,
+    "mode": "Solar",
+    "min_charge": 1400
+   },
+   {
+    "dt": 10.0,
+    "surplus": 2799.0,
+    "ratio": 50,
+    "mode": "Solar",
+    "min_charge": 1400
+   },
+   {
+    "dt": 1.0,
+    "surplus": 2799.0,
+    "ratio": 50,
+    "mode": "Solar",
+    "min_charge": 1400
+   },
+   {
+    "dt": 1.0,
+    "surplus": 2801.0,
+    "ratio": 50,
+    "mode": "Solar",
+    "min_charge": 1400
+   },
+   {
+    "dt": 29.0,
+    "surplus": 2800.0,
+    "ratio": 50,
+    "mode": "Solar",
+    "min_charge": 1400
+   },
+   {
+    "dt": 1.0,
+    "surplus": 2800.0,
+    "ratio": 50,
+    "mode": "Solar",
+    "min_charge": 1400
+   },
+   {
+    "dt": 30.0,
+    "surplus": 2801.0,
+    "ratio": 50,
+    "mode": "Solar",
+    "min_charge": 1400
+   },
+   {
+    "dt": 30.0,
+    "surplus": 2802.0,
+    "ratio": 50,
+    "mode": "Solar",
+    "min_charge": 1400
+   },
+   {
+    "dt": 30.0,
+    "surplus": 2796.0,
+    "ratio": 50,
+    "mode": "Automatisch",
+    "min_charge": 1400
+   },
+   {
+    "dt": 10.0,
+    "surplus": 2799.0,
+    "ratio": 50,
+    "mode": "Automatisch",
+    "min_charge": 1400
+   }
+  ],
+  "layer": "threshold",
+  "guards": "average_n is a sample count",
+  "mutant_diff_tick": 6,
+  "key": "89ac5a12315e70ce"
+ },
+ {
+  "knobs": {
+   "min_charge_w": 3134,
+   "hyst_w": 145,
+   "debounce_s": 590,
+   "solar_debounce_s": 398,
+   "average_n": 7,
+   "limit_step_w": 279,
+   "max_charge_w": 7360,
+   "ratio_fallback": 50.0
+  },
+  "ticks": [
+   {
+    "dt": 5.0,
+    "surplus": -78.5766,
+    "ratio": 72,
+    "mode": "Off",
+    "min_charge": 3134
+   },
+   {
+    "dt": 5.0,
+    "surplus": -45.2453,
+    "ratio": 72,
+    "mode": "Off",
+    "min_charge": 3134
+   },
+   {
+    "dt": 10.0,
+    "surplus": 855.4318,
+    "ratio": 43,
+    "mode": "Off",
+    "min_charge": 3134
+   },
+   {
+    "dt": 1.0,
+    "surplus": 99.4316,
+    "ratio": 43,
+    "mode": "Off",
+    "min_charge": 3134
+   },
+   {
+    "dt": 10.0,
+    "surplus": 0.0,
+    "ratio": 43,
+    "mode": "Off",
+    "min_charge": 3134
+   },
+   {
+    "dt": 300.0,
+    "surplus": -0.0,
+    "ratio": 43,
+    "mode": "Off",
+    "min_charge": 3134
+   },
+   {
+    "dt": 30.0,
+    "surplus": 34.967,
+    "ratio": 43,
+    "mode": "Off",
+    "min_charge": 3134
+   },
+   {
+    "dt": 10.0,
+    "surplus": -1884.8024,
+    "ratio": 43,
+    "mode": "Off",
+    "min_charge": 3134
+   },
+   {
+    "dt": 46.179,
+    "surplus": 0.0,
+    "ratio": 43,
+    "mode": "Off",
+    "min_charge": 3134
+   },
+   {
+    "dt": 30.0,
+    "surplus": -0.0,
+    "ratio": 43,
+    "mode": "Off",
+    "min_charge": 3134
+   },
+   {
+    "dt": 1.0,
+    "surplus": 1.2344,
+    "ratio": 43,
+    "mode": "Off",
+    "min_charge": 3134
+   },
+   {
+    "dt": 300.0,
+    "surplus": -35.6749,
+    "ratio": 16,
+    "mode": "Off",
+    "min_charge": 3134
+   },
+   {
+    "dt": 5.0,
+    "surplus": 36.0443,
+    "ratio": 16,
+    "mode": "Off",
+    "min_charge": 3134
+   },
+   {
+    "dt": 30.0,
+    "surplus": -20.0548,
+    "ratio": 16,
+    "mode": "Off",
+    "min_charge": 3134
+   },
+   {
+    "dt": 10.0,
+    "surplus": 0.0,
+    "ratio": 16,
+    "mode": "Off",
+    "min_charge": 3134
+   },
+   {
+    "dt": 5.0,
+    "surplus": 415.937,
+    "ratio": 16,
+    "mode": "Off",
+    "min_charge": 3134
+   },
+   {
+    "dt": 5.0,
+    "surplus": -0.0,
+    "ratio": 16,
+    "mode": "Off",
+    "min_charge": 3134
+   },
+   {
+    "dt": 1.0,
+    "surplus": 0.0,
+    "ratio": 16,
+    "mode": "Off",
+    "min_charge": 3134
+   },
+   {
+    "dt": 300.0,
+    "surplus": 3553.3485,
+    "ratio": 16,
+    "mode": "Off",
+    "min_charge": 3134
+   },
+   {
+    "dt": 30.0,
+    "surplus": 3139.6851,
+    "ratio": 16,
+    "mode": "Off",
+    "min_charge": 3134
+   },
+   {
+    "dt": 30.0,
+    "surplus": 25.4664,
+    "ratio": 16,
+    "mode": "Automatisch",
+    "min_charge": 3134
+   },
+   {
+    "dt": 300.0,
+    "surplus": 0.0,
+    "ratio": 16,
+    "mode": "Automatisch",
+    "min_charge": 3134
+   },
+   {
+    "dt": 14.43,
+    "surplus": -1422.8795,
+    "ratio": 16,
+    "mode": "Automatisch",
+    "min_charge": 3134
+   },
+   {
+    "dt": 10.0,
+    "surplus": 0.0,
+    "ratio": 16,
+    "mode": "Off",
+    "min_charge": 3134
+   },
+   {
+    "dt": 32.411,
+    "surplus": 757.8179,
+    "ratio": 16,
+    "mode": "Off",
+    "min_charge": 3134
+   },
+   {
+    "dt": 26.709,
+    "surplus": 0.0,
+    "ratio": 16,
+    "mode": "Off",
+    "min_charge": 3134
+   },
+   {
+    "dt": 5.0,
+    "surplus": 6799.6613,
+    "ratio": 16,
+    "mode": "Off",
+    "min_charge": 3134
+   },
+   {
+    "dt": 5.0,
+    "surplus": 85.7707,
+    "ratio": 87,
+    "mode": "Off",
+    "min_charge": 3134
+   },
+   {
+    "dt": 5.0,
+    "surplus": 4787.6107,
+    "ratio": 87,
+    "mode": "Off",
+    "min_charge": 3134
+   },
+   {
+    "dt": 1.0,
+    "surplus": 0.0,
+    "ratio": 87,
+    "mode": "Automatisch",
+    "min_charge": 3134
+   },
+   {
+    "dt": 5.0,
+    "surplus": 0.0,
+    "ratio": 87,
+    "mode": "Automatisch",
+    "min_charge": 3134
+   },
+   {
+    "dt": 10.0,
+    "surplus": -6.7076,
+    "ratio": 87,
+    "mode": "Automatisch",
+    "min_charge": 3134
+   },
+   {
+    "dt": 10.0,
+    "surplus": 157.7207,
+    "ratio": 87,
+    "mode": "Automatisch",
+    "min_charge": 3134
+   },
+   {
+    "dt": 30.0,
+    "surplus": -85.7097,
+    "ratio": 87,
+    "mode": "Automatisch",
+    "min_charge": 3134
+   },
+   {
+    "dt": 5.0,
+    "surplus": -0.0,
+    "ratio": 87,
+    "mode": "Automatisch",
+    "min_charge": 3134
+   },
+   {
+    "dt": 5.0,
+    "surplus": 0.0,
+    "ratio": 87,
+    "mode": "Automatisch",
+    "min_charge": 3134
+   },
+   {
+    "dt": 1.0,
+    "surplus": -0.0,
+    "ratio": 87,
+    "mode": "Automatisch",
+    "min_charge": 3134
+   },
+   {
+    "dt": 30.0,
+    "surplus": 0.0,
+    "ratio": 87,
+    "mode": "Automatisch",
+    "min_charge": 3134
+   },
+   {
+    "dt": 10.0,
+    "surplus": 79.0738,
+    "ratio": 87,
+    "mode": "Automatisch",
+    "min_charge": 3134
+   },
+   {
+    "dt": 5.0,
+    "surplus": 6459.3454,
+    "ratio": 87,
+    "mode": "Automatisch",
+    "min_charge": 3134
+   }
+  ],
+  "layer": "random",
+  "guards": "average_n is a sample count",
+  "mutant_diff_tick": 39,
+  "key": "84ccdbfc098ae0a3"
+ }
+]

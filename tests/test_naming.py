@@ -219,7 +219,7 @@ def test_discharge_still_honours_the_no_discharge_interlock():
 
 def test_autonomous_never_steers_but_still_reports_what_it_measures():
     # EB commands nothing; the device regulates itself. The measured power must
-    # still propagate into rest — meten is weten — or the next cell is handed a
+    # still propagate into rest — measuring is knowing — or the next cell is handed a
     # surplus that is already spent.
     out, rest_out = _cell("autonomous", soc=60, measured=900, rest=2000)
     assert out.action == "autonomous"

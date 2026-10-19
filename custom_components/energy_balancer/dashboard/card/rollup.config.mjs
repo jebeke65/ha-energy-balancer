@@ -11,9 +11,10 @@ export default {
     file: join(__dirname, 'dist/eb-cards.js'),
     format: 'es',
     sourcemap: false,
+    banner: '/*! Energy Balancer cards. Portions derived from SEM (https://github.com/traktore-org/sem-community), MIT License, Copyright (c) 2025 belinea4071. Licensed under the MIT License; see NOTICE in the repository. */',
   },
   plugins: [
     resolve(),
-    terser({ format: { comments: false } }),
+    terser({ format: { comments: /^!/ } }),   // keep the /*! licence banner
   ],
 };

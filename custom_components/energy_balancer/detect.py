@@ -1,5 +1,7 @@
 """Sensor auto-detection — ported from SEM's intelligence.
 
+Portions derived from SEM (https://github.com/traktore-org/sem-community), MIT License, Copyright (c) 2025 belinea4071. See NOTICE.
+
 Two layers, exactly like SEM:
   1. The HA Energy Dashboard (.storage/energy) is authoritative for
      solar / grid / battery sensors.

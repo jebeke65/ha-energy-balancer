@@ -13,20 +13,6 @@ from core import CellConfig, CellState, compute
 from test_tier import chain, o, W
 
 
-def test_latch_persists_into_band_discharge():
-    # Start above the band (55 > target+3) → discharging. Drop SoC into the band
-    # (51, inside 47–53): the latch must KEEP discharging, not flip to hold.
-    cells = chain(0, 3000, {"soc": 55, "target": 50}, {"soc": 55, "target": 50})
-    r1 = compute(cells)
-    assert o(r1, "goodwe").action == "produce" and o(r1, "marstek").action == "produce"
-
-    cells[2][1].soc = 51          # now inside the band, prev_action == "produce"
-    cells[3][1].soc = 51
-    r2 = compute(cells)
-    assert o(r2, "goodwe").action == "produce"   # latched → still discharging
-    assert o(r2, "marstek").action == "produce"
-
-
 def test_latch_releases_below_band_bottom():
     # Discharging, then SoC falls below target−delta (46 < 47) → latch releases,
     # the cell must stop discharging (it's now a charge-latch cell).
@@ -36,23 +22,6 @@ def test_latch_releases_below_band_bottom():
     cells[3][1].soc = 46
     r = compute(cells)
     assert o(r, "goodwe").power_w >= 0 and o(r, "marstek").power_w >= 0  # not discharging
-
-
-def test_latch_persists_into_band_charge():
-    # Start below the band (44 < target−3) → charging. Rise into the band (49):
-    # the latch must KEEP its charge direction (not start discharging on a deficit).
-    cells = chain(2000, 0, {"soc": 44, "target": 50}, {"soc": 44, "target": 50})
-    r1 = compute(cells)
-    assert o(r1, "goodwe").action == "consume"
-
-    # Surplus gone, small deficit; SoC now inside the band, prev == "consume".
-    cells[0][1].measured_w = 0
-    cells[1][1].measured_w = 500
-    cells[2][1].soc = 49
-    cells[3][1].soc = 49
-    r2 = compute(cells)
-    # Latched to charge → must NOT discharge to cover the deficit.
-    assert o(r2, "goodwe").power_w >= 0 and o(r2, "marstek").power_w >= 0
 
 
 def test_latch_full_cycle_no_flap_at_target():

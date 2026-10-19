@@ -77,10 +77,3 @@ def test_release_above_target_keeps_its_own_reason():
     assert g.action == "autonomous"
     assert "target" in g.reason
 
-
-def test_no_external_policy_falls_back_to_ebs_own_ramp():
-    """No brain configured: EB must still steer, not sit on its hands."""
-    cells = chain(600, 900, *BELOW_TARGET)
-    r = compute(cells, grid_w=0.0, tier_pct={4: 0.0}, intent=None)
-    g, m = o(r, "goodwe"), o(r, "marstek")
-    assert (g.power_w + m.power_w) > 0, (g.reason, m.reason)

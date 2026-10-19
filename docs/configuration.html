@@ -122,6 +122,56 @@
         ceiling plus your running monthly-peak sensor.</td>
   </tr>
   <tr>
+    <td>Your peak maximum</td>
+    <td><code>peak_max_w</code></td>
+    <td>0 (not set)<br><small>range 0–30000</small></td>
+    <td>A ceiling you allow on top of the others, for a month in which you know you will
+        need more (a winter month with a car to charge). It can only raise the ceiling:
+        its lower bound follows the higher of the monthly peak and
+        <code>peak_limit_w</code>, because a peak that is already spent cannot be won
+        back.</td>
+  </tr>
+  <tr>
+    <td>15-minute block demand</td>
+    <td><code>block_demand_sensor</code></td>
+    <td>—</td>
+    <td>The running 15-minute average grid import, the figure a capacity tariff bills.
+        With it, the battery tier gets a budget for the rest of the current quarter hour
+        instead of reacting to the momentary grid value. Without it, there is no block
+        budget.</td>
+  </tr>
+  <tr>
+    <td>Monthly peak sensor</td>
+    <td><code>month_peak_sensor</code></td>
+    <td>—</td>
+    <td>Which of the <code>peak_limit_sensors</code> carries the monthly peak. Meters
+        tend to keep showing last month's peak for a while after midnight on the 1st;
+        naming the sensor here lets the month-rollover windows below treat that stale
+        value. Leave empty to switch the rollover handling off.</td>
+  </tr>
+  <tr>
+    <td>Month-start peak policy</td>
+    <td><code>month_start_peak_policy</code></td>
+    <td><code>previous</code></td>
+    <td>What the monthly-peak reading counts as inside a rollover window:
+        <code>previous</code> takes it as-is, <code>configured</code> caps it at
+        <code>peak_limit_w</code>, <code>zero</code> ignores it.</td>
+  </tr>
+  <tr>
+    <td>Month-start window</td>
+    <td><code>month_start_window_min</code></td>
+    <td>30&nbsp;min<br><small>range 0–240</small></td>
+    <td>How long after midnight on the 1st the policy applies. 0 = off.</td>
+  </tr>
+  <tr>
+    <td>Month-end window</td>
+    <td><code>month_end_window_min</code></td>
+    <td>0 (off)<br><small>range 0–1440</small></td>
+    <td>The same cap, applied before midnight on the last day of the month. A battery that
+        is still charging hard at 23:59 is still charging at 00:01, and that quarter hour
+        sets the new month's peak, so the brake has to be on before the boundary.</td>
+  </tr>
+  <tr>
     <td>Update interval</td>
     <td><code>update_interval_seconds</code></td>
     <td>10&nbsp;s<br><small>range 5–300</small></td>
@@ -149,6 +199,17 @@
     <td>€/kWh for exported energy. Same rules as the import price.</td>
   </tr>
 </table>
+</div>
+
+<div class="note">
+  <p>
+    <strong>The import ceiling, in one rule.</strong>
+    <code>ceiling = max(peak_limit_w, monthly peak, peak_max_w)</code>.
+    <code>peak_limit_w</code> is what you want the month to cost and is the whole ceiling
+    at the start of a month. The monthly peak is what already happened: once the month
+    stands at that value, staying below it saves nothing. <code>peak_max_w</code> is the
+    extra room you choose to allow.
+  </p>
 </div>
 
 <h3>Forecast display inputs</h3>

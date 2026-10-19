@@ -9,7 +9,7 @@
  * - render() provides the canvas + empty-state skeleton
  * - firstUpdated() initialises the chart instance
  * - updated() refreshes data on each render cycle
- * - Chart.js loaded from CDN via module-level singleton _loadChartJs()
+ * - Chart.js and its date adapter are bundled; _loadChartJs() just returns them
  * - Chart instance destroyed in disconnectedCallback()
  */
 
@@ -17,25 +17,14 @@ import { SEMLitBase, html, css, nothing } from '../base/eb-lit-base.js';
 import { semTheme, semGetCurrency, semDefineCard, SEM_COLORS } from '../base/eb-shared.js';
 import { startOfDayInHaTz } from '../util/time-zone.js';
 
-/* ── Chart.js CDN singleton loader ── */
-let _chartJsReady = null;
+/* ── Chart.js, bundled (no runtime download) ── */
+import { Chart, registerables } from 'chart.js';
+import 'chartjs-adapter-date-fns';
+
+Chart.register(...registerables);
+
 function _loadChartJs() {
-    if (_chartJsReady) return _chartJsReady;
-    _chartJsReady = new Promise((resolve, reject) => {
-        if (window.Chart) { resolve(window.Chart); return; }
-        const script = document.createElement('script');
-        script.src = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js';
-        script.onload = () => {
-            const adapter = document.createElement('script');
-            adapter.src = 'https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js';
-            adapter.onload  = () => resolve(window.Chart);
-            adapter.onerror = () => resolve(window.Chart); // adapter optional
-            document.head.appendChild(adapter);
-        };
-        script.onerror = () => reject(new Error('Failed to load Chart.js'));
-        document.head.appendChild(script);
-    });
-    return _chartJsReady;
+    return Promise.resolve(Chart);
 }
 
 /* ── Canonical color palette (falls back if SEM_COLORS is somehow unavailable) ── */

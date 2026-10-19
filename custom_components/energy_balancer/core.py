@@ -35,9 +35,11 @@ from typing import Optional
 try:
     from .battery_algorithm import calculate_min_soc  # package context (HA)
     from .intake import WANT_CHARGE, WANT_NO_CHARGE
+    from . import car_brain
 except ImportError:
     from battery_algorithm import calculate_min_soc   # flat context (tests)
     from intake import WANT_CHARGE, WANT_NO_CHARGE
+    import car_brain
 
 
 # ---------------------------------------------------------------------------
@@ -151,7 +153,7 @@ class CellConfig:
     sunny_min_soc: float = 25.0       # target SoC at full sun
     no_sun_min_soc: float = 40.0      # target SoC without sun
     hours_until_solar: float = 0.0
-    base_consumption_w: float = 800.0  # predicted house consumption (W)
+    base_consumption_w: float = 850.0  # predicted house consumption (W)
     pv_weight: float = 0.0            # solar confidence 0-1
 
     # Floor mode. "balanced" = run the algorithm (with its safeguards);
@@ -159,6 +161,20 @@ class CellConfig:
     # floor clamp so the user can park the pool lower than the algorithm would.
     min_soc_mode: str = "balanced"
     manual_min_soc: float = 15.0
+
+    # --- Car brain (ported ManageCarCharge) --------------------------------
+    # Off by default: with use_car_brain False nothing below is read and the
+    # cell takes exactly the path it took before these fields existed.
+    use_car_brain: bool = False
+    car_mode: Optional[str] = None      # raw input_select.car_charge_mode value
+    start_margin_w: float = 50.0        # the app's hysteresis_w
+    debounce_s: int = 15
+    solar_debounce_s: int = 300
+    average_n: int = 5
+    limit_step_w: float = 50.0
+    ratio_fallback: float = 50.0
+    # "Surplus" mode only: tier SoC (%) from which the car may take the sun.
+    surplus_tier_soc: float = 80.0
 
     def __post_init__(self):
         # Normalize here rather than at the call site: a legacy mode can then not
@@ -174,6 +190,16 @@ class CellState:
     measured_w: float = 0.0
     online: bool = True
     prev_action: str = "idle"
+    # Car-brain memory (buffer / debounce timestamp / lagging limit). Carried
+    # across ticks by the coordinator, exactly like prev_action. None unless
+    # use_car_brain is on.
+    car_state: object = None
+    # Epoch seconds for the car brain's debounce. The coordinator fills it;
+    # the parity harness sets it explicitly so the clock is deterministic.
+    now_ts: float = 0.0
+    # Capacity-weighted SoC of the house batteries, filled by compute() for
+    # car-brain cells only. Read by the "Surplus" gate and nothing else.
+    tier_soc: Optional[float] = None
 
 
 @dataclass
@@ -302,6 +328,13 @@ def process_cell(cfg: CellConfig, st: CellState,
                 f"off (measured {st.measured_w:.0f}W)"),
                 new_rest, flags, forecast, "idle")
 
+    # --- Car brain: the ported AppDaemon app owns this cell outright ---------
+    # Deliberately BEFORE the take-0% gate: the app does not treat ratio 0 as
+    # "blocked". In "Automatisch" a ratio of 0 still lifts the result to the
+    # floor, so gating here would diverge from the app on the very first tick.
+    if cfg.use_car_brain:
+        return _process_car_brain(cfg, st, rest, flags, forecast)
+
     # --- Slider 0 = blocked ---
     if cfg.take_pct <= 0:
         return (CellOutput("idle", 0.0, "take 0% — blocked"),
@@ -315,7 +348,7 @@ def process_cell(cfg: CellConfig, st: CellState,
 
     # --- Above target in balanced mode — pass through, the cell self-manages ---
     if desired == "autonomous":
-        # Use measured_w for rest propagation — meten is weten
+        # Use measured_w for rest propagation — measuring is knowing
         measured = st.measured_w
         rest_out = rest - measured
 
@@ -381,7 +414,7 @@ def process_cell(cfg: CellConfig, st: CellState,
         if cfg.set_flag_on_charge:
             flags.add(cfg.set_flag_on_charge)
 
-        # Meten is weten. `take` is what we ASK the cell to draw; `measured` is what
+        # Measuring is knowing. `take` is what we ASK the cell to draw; `measured` is what
         # it actually draws. The chain has to pass on reality, not the request:
         # a car charger with no car attached was handed 3.4 kW of surplus, reported
         # rest_out = 0, and the batteries below it saw nothing left to charge from —
@@ -439,6 +472,142 @@ def process_cell(cfg: CellConfig, st: CellState,
     return (CellOutput("idle", meas,
             f"idle (measured {meas:.0f}W)"),
             new_rest, flags, forecast, "idle")
+
+
+def _process_car_brain(cfg: CellConfig, st: CellState, rest: float,
+                       flags: set, forecast: float) -> tuple:
+    """Run the ported car brain for this cell and shape its answer for the chain.
+
+    Everything numeric comes from car_brain.tick(), which is a 1:1 port of the
+    AppDaemon app. This function only does the wiring:
+
+      surplus  ← the chain rest at this cell's position. With solar at 0 and
+                 house at 1, `rest` there IS solar − house, the very number
+                 sensor.solar_surplus_without_car_charger carries.
+      ratio    ← cfg.take_pct (the coordinator already resolved the slider)
+      mode     ← cfg.car_mode, the raw input_select.car_charge_mode value
+      minimum  ← cfg.charge_floor_w
+
+    THREE DELIBERATE DEVIATIONS FROM THE SURROUNDING CHAIN — see the report:
+      1. No headroom cap. The app has no notion of the monthly peak, so capping
+         here would break parity. The peak guard therefore does NOT apply to
+         this cell while the flag is on.
+      2. No follower branch. The old path did `if measured > 50: take = measured`,
+         which is what locked the car at 6 A on 2026-07-03. The app never had it.
+      3. No SoC taper / max_soc gate — a car charger has no SoC in this config.
+    """
+    state = st.car_state
+    if state is None:
+        state = car_brain.CarBrainState.for_config(_car_cfg(cfg))
+        st.car_state = state
+
+    brain_cfg = _car_cfg(cfg)
+    state.resize_buffer(brain_cfg.average_n)
+
+    # "Surplus" — EB-only, the app never had it. Off/Automatisch/Solar skip
+    # this block entirely and reach tick() with exactly the mode they had.
+    mode = cfg.car_mode
+    gate_note = ""
+    if mode == car_brain.MODE_SURPLUS:
+        is_open, gate_note = _surplus_gate(cfg, st, state)
+        if not is_open:
+            # Tier first: the car waits. Keep the average fresh (unlike "Off",
+            # which freezes it) so the car starts on today's sun, not on a
+            # stale window, and reset the limit so it starts like a cold
+            # Solar start once the gate opens.
+            state.buffer.append(car_brain._as_float(rest, 0.0))
+            state.current_limit = 0
+            state.last_above_start = float("-inf")
+            st.car_state = state
+            meas = max(0.0, st.measured_w)
+            return (CellOutput("idle", 0.0, f"car brain: {gate_note}"),
+                    rest - meas, flags, forecast, "idle")
+        mode = car_brain.MODE_SOLAR
+
+    limit, reason, state = car_brain.tick(
+        brain_cfg, state,
+        surplus=rest,
+        ratio=cfg.take_pct,
+        mode=mode,
+        now_ts=st.now_ts,
+        min_charge_live=None,       # the floor is already inside brain_cfg
+    )
+    st.car_state = state
+    if gate_note:
+        reason = f"{gate_note}; {reason}"
+
+    measured = st.measured_w
+    if limit > 0:
+        if cfg.set_flag_on_charge:
+            flags.add(cfg.set_flag_on_charge)
+        rest_out = rest - measured
+        new_fc = _claim_forecast(max(0.0, measured), rest, forecast)
+        return (CellOutput("consume", float(limit), f"car brain: {reason}"),
+                rest_out, flags, new_fc, "consume")
+
+    meas = max(0.0, measured)
+    return (CellOutput("idle", 0.0, f"car brain: {reason}"),
+            rest - meas, flags, forecast, "idle")
+
+
+# Tier must fall this many points below surplus_tier_soc before the car waits
+# again. Fixed on purpose (one knob for the user): without it a passing cloud
+# would flip the car on and off around the threshold.
+SURPLUS_GATE_HYST = 5.0
+
+
+def _surplus_gate(cfg: CellConfig, st: CellState, state) -> tuple:
+    """Open/closed for "Surplus" mode, with hysteresis. Latched on `state`.
+
+    Opens at tier SoC >= surplus_tier_soc, closes below it minus
+    SURPLUS_GATE_HYST. An unknown tier SoC keeps the gate closed: the user's
+    rule for this mode is batteries first, so doubt goes to the batteries.
+    """
+    thr = float(cfg.surplus_tier_soc)
+    soc = st.tier_soc
+    if soc is None:
+        state.surplus_open = False
+        return False, f"surplus: tier SoC unknown → tier first"
+    if state.surplus_open:
+        if soc < thr - SURPLUS_GATE_HYST:
+            state.surplus_open = False
+    elif soc >= thr:
+        state.surplus_open = True
+    if state.surplus_open:
+        return True, f"surplus: tier {soc:.0f}% ≥ {thr - SURPLUS_GATE_HYST:.0f}% → solar"
+    return False, f"surplus: tier {soc:.0f}% < {thr:.0f}% → tier first"
+
+
+def _tier_soc(ordered: list) -> Optional[float]:
+    """Capacity-weighted SoC of the online house batteries, None if none."""
+    num = cap = 0.0
+    for cfg, st in ordered:
+        if cfg.type == "house_battery" and cfg.has_soc and st.online:
+            num += st.soc * cfg.capacity_kwh
+            cap += cfg.capacity_kwh
+    # Rounded: 15 kWh and 5.12 kWh both at 80 % give 79.99999999999999, which
+    # would keep the gate shut at exactly the threshold.
+    return round(num / cap, 2) if cap > 0 else None
+
+
+def _car_cfg(cfg: CellConfig):
+    """Build the car brain's config from the cell config.
+
+    The app has two minimum values: the `min_charge_input` slider and the
+    `min_charge_w` arg it falls back to. EB has one number (charge_floor_w), so
+    it becomes the fallback and the live value is left None — the two paths then
+    resolve to the same figure, which is what makes the parity exact.
+    """
+    return car_brain.CarBrainConfig(
+        min_charge_w=int(cfg.charge_floor_w),
+        hyst_w=int(cfg.start_margin_w),
+        debounce_s=int(cfg.debounce_s),
+        solar_debounce_s=int(cfg.solar_debounce_s),
+        average_n=int(cfg.average_n),
+        limit_step_w=int(cfg.limit_step_w),
+        max_charge_w=int(cfg.max_charge_w),
+        ratio_fallback=float(cfg.ratio_fallback),
+    )
 
 
 def _desired_action(cfg: CellConfig, st: CellState, rest: float,
@@ -569,6 +738,46 @@ def _state_to_prev(state: str, st: CellState) -> str:
     return st.prev_action  # hold → unchanged, so the latch direction survives
 
 
+def quarter_remaining_s(minute: int, second: int) -> float:
+    """Seconds left in the running 15-minute settlement block."""
+    return 900.0 - (minute % 15) * 60.0 - second
+
+
+def block_budget_w(ceiling_w: float, block_w: float, remaining_s: float,
+                   other_load_w: float) -> float:
+    """What the tier may still draw so the quarter closes at or under the ceiling.
+
+    The capacity tariff bills the highest 15-minute AVERAGE import, not the
+    highest instantaneous one, so this is a bucket and not a speed limit: what
+    matters is the energy left in the block, however it is spent.
+
+        room       = (ceiling − block so far) × 900 W·s
+        allowed    = room / seconds left        — average import still permitted
+        for the tier = allowed − whatever the rest of the house is drawing
+
+    Why this replaces the old brake. That one compared the INSTANTANEOUS grid
+    against a fixed ceiling, armed and released on the same condition, and its
+    own charging is what pushed the grid to that ceiling — so it flipped the tier
+    between charge and discharge every 20-30 s (measured 2026-08-31).
+
+    Why this one cannot do that: it is ONE-SIDED. It only ever lowers the charge
+    and never asks for the opposite, so there is no pair of conditions to flip
+    between. The budget itself is not monotone — as the quarter runs out the same
+    room may be spent at a higher rate, which is the bucket behaving correctly —
+    but a cap that loosens only permits more charging, it does not reverse it.
+    It is also preventive, which is the only thing that helps —
+    once the block is over the ceiling the quarter is already paid for, and
+    discharging cannot bring a rising average back down.
+
+    Returns 0.0 when there is no room left, never a negative (this brake caps
+    charging; it never asks for discharge).
+    """
+    if remaining_s <= 0:
+        return 0.0
+    allowed_avg = (ceiling_w - block_w) * 900.0 / remaining_s
+    return max(0.0, allowed_avg - other_load_w)
+
+
 def reactive_charge_ramp(prev_pct, grid_w, threshold_w,
                          up_step=5, up_export_step=10, down_step=10):
     """Reactive charge ramp on measured grid — BatteryOptimisation flow.
@@ -644,7 +853,7 @@ def _distribute(total: float, weight: dict, cap: dict) -> tuple:
 
 
 def _pool_controller(members, fw, headroom, grid_w, tier_state, flags, forecast,
-                     intent=None):
+                     intent=None, block_budget_w=None):
     """BatteryOptimisation flow on a battery pool — ONE signed accumulator.
 
     The pool acts as one battery (capacity-weighted SoC/target, summed caps).
@@ -667,31 +876,31 @@ def _pool_controller(members, fw, headroom, grid_w, tier_state, flags, forecast,
 
     charge_cap = {c.id: c.max_charge_w * (c.take_pct / 100.0)
                   * _charge_taper(st.soc, c.max_soc) for c, st in members}
-    # Discharge floor = min_soc (the device's own depth-of-discharge limit).
-    dis_cap = {c.id: c.max_discharge_w * (c.take_pct / 100.0)
-               * _discharge_taper(st.soc, c.min_soc) for c, st in members}
     pool_max_charge = sum(charge_cap.values())
-    pool_max_dis = sum(dis_cap.values())
 
-    pct = float(tier_state.get(pos, 0.0))      # signed: + charge, − discharge
-
-    # --- Charge latch (BatteryOptimisation): below target → grid-charge to peak;
-    #     above target → release (explicit grid-follow). Held in the band. ---
-    active_key = "active_%d" % pos
-    charge_active = bool(tier_state.get(active_key, False))
-    if pool_soc < pool_target - hys:
-        charge_active = True
-    elif pool_soc > pool_target + hys:
-        charge_active = False
-
-    # --- Peak emergency: grid over the ceiling → instant discharge (hard) ---
+    # --- One writer, one value -------------------------------------------
+    # The external brain owns the decision. It runs the target band with its own
+    # hysteresis, the peak limit (against the same reference EB reads, minus a
+    # 100 W margin of its own), the solar offset, and it forces 0 % when its
+    # sensors drop out. EB adds exactly what the brain cannot know: that the pool
+    # is two devices with their own caps and SoC.
+    #
+    # Everything EB used to decide here on top of that is gone (2026-08-31):
+    #   * its own band + charge latch — computed every tick and overwritten by
+    #     the two branches below before anything read it;
+    #   * its own charge ramp — unreachable while an intent exists, and a second
+    #     go at what the brain already did;
+    #   * its own peak brake — a second limiter on the same measurement, sitting
+    #     100 W ABOVE the brain's threshold and without hysteresis. Its arm and
+    #     release condition were identical, so it flipped the tier between charge
+    #     and discharge every 20-30 s (3 reversals in 2 min 26 measured), which
+    #     pushed the goodwe and the marstek into charging from each other.
+    # The peak ceiling comes back as one preventive cap on the 15-minute block —
+    # a quantity that only ever climbs inside a quarter, so it cannot oscillate.
     release = False
     why = ""                       # only read on the release path below
-    if grid_w > headroom and pool_max_dis > 0:
-        charge_active = False
-        dis = min(pool_max_dis, grid_w)               # cover the over-import now
-        pct = -100.0 * dis / pool_max_dis
-    elif intent is not None:
+    pct = 0.0
+    if intent is not None:
         # An external charge policy owns the decision, and the target band plays
         # no part in it. The band lives in the external brain, which already runs
         # it and hands down the verdict; re-deciding it here made EB veto a charge
@@ -701,11 +910,7 @@ def _pool_controller(members, fw, headroom, grid_w, tier_state, flags, forecast,
         #
         # The intent arrives already translated into EB's own vocabulary by
         # `intake.from_external`; no foreign token reaches this function.
-        # `charge_active` is still tracked for the no-brain path below, but it is
-        # no longer a gate here. That also defuses the peak branch clearing the
-        # latch: one grid peak used to switch charging off for hours.
         if intent.want == WANT_CHARGE:
-            charge_active = True
             pct = max(0.0, min(100.0, float(intent.pct)))
             release = pct <= 0
             why = f"no setpoint (charge 0 from {intent.source})"
@@ -716,35 +921,45 @@ def _pool_controller(members, fw, headroom, grid_w, tier_state, flags, forecast,
             # keep covering the house, and once the tier gains its own discharge
             # path that is where the two must diverge. Collapsing them now would
             # bury the distinction the intake layer exists to preserve.
-            charge_active = False
             pct = 0.0
             release = True
             why = ("no grid charging" if intent.want == WANT_NO_CHARGE
                    else "handed to the cells")
             why = f"{why} ({intent.source})"
-    elif charge_active:
-        # No external policy: EB falls back on its own band and ramps on the
-        # measured grid, up to the ceiling. `intent is None` means nobody is
-        # telling us what to do, which is not the same as being told to do
-        # nothing.
-        pct = float(reactive_charge_ramp(max(0, int(pct)), grid_w, headroom))
-        release = pct <= 0
-        why = "no setpoint (own ramp at 0)"
     else:
+        # No external charge policy configured, or its sensor is unavailable.
+        # EB has no band of its own any more, so there is nothing to fall back
+        # on and nothing to invent: hand the cells over to their own regulation.
         release = True
-        why = f"SoC {pool_soc:.0f}% > target {pool_target:.0f}%"
+        why = "no external charge policy"
+
+    # Above target the SoC is a ground for the release in its own right. With an
+    # external brain the intent branch fires first, so name both grounds —
+    # otherwise "handed over" and "above target" are indistinguishable after the
+    # fact (regression 2026-08-10, tests/test_pool_release.py).
+    if release and pool_soc > pool_target and "target" not in why:
+        why = f"{why}; SoC {pool_soc:.0f}% > target {pool_target:.0f}%"
 
     if release:
         # Released → EB stops steering and each cell regulates itself against its
         # own meter. Smooth, with no explicit grid-follow pump around grid=0: the
         # reserve is met, and surplus soak plus peak cover ride on the devices'
-        # own fast regulation. EB takes explicit control back as soon as the pool
-        # drops below target again (charge_active flips True).
+        # own fast regulation. EB takes explicit control back as soon as the
+        # brain asks to charge again.
+        #
+        # No floor guard here on purpose (weighed and dropped 2026-08-31). Each
+        # cell already declares its own min_soc, and the device enforces it. A
+        # guard in EB would start importing EARLIER than the device would, so it
+        # saves no grid power — it only avoids the goodwe's discharge lock, and
+        # what drove it into that lock was the peak-branch oscillation, which is
+        # gone. It also cannot be given a safe fixed value: the brain restarts
+        # charging at target − hysteresis, and with the target free to fall to
+        # sunny_min_soc (15) that threshold reaches 12 — below which a guard would
+        # stop the pool from ever getting low enough to restart charging at all.
         tier_state[pos] = 0.0
-        tier_state[active_key] = charge_active
         rest_out = fw.rest_w
         for c, st in members:
-            # Use measured_w for rest propagation — meten is weten. EB plans
+            # Use measured_w for rest propagation — measuring is knowing. EB plans
             # nothing here, but the cells keep drawing power autonomously, so
             # the rest handed to the next cell has to account for it.
             measured = st.measured_w
@@ -754,87 +969,61 @@ def _pool_controller(members, fw, headroom, grid_w, tier_state, flags, forecast,
             prev[c.id] = "autonomous"
         return (outputs, rest_out, flags, forecast, prev)
     tier_state[pos] = pct
-    tier_state[active_key] = charge_active
 
-    # --- Convert to pool power + split across the cells ---
-    if pct >= 0:                                       # charge
-        pool_w = pct / 100.0 * pool_max_charge
-        # Split by room left, not by distance below target. The old key weighed
-        # (target + hysteresis - SoC) x capacity, which is a band test per cell:
-        # a cell above its own target scored zero and was parked on "pool hold"
-        # even while the pool as a whole was charging. On 2026-08-10 that put the
-        # full 2500 W on the marstek (5.12 kWh, 15%) and nothing on the goodwe
-        # (15 kWh, 19%), which had by far the most room. Deciding whether to
-        # charge is the band's job and lives elsewhere; this only divides.
-        # No hysteresis here: a share that drifts from 74/26 to 73/27 is not a
-        # decision that can chatter, it is simply the right ratio.
-        weight = {c.id: max(0.0, c.max_soc - st.soc) * c.capacity_kwh
-                  for c, st in members}
-        if sum(weight.values()) <= 0:
-            weight = dict(charge_cap)
-        alloc, _ = _distribute(min(pool_w, pool_max_charge), weight, charge_cap)
-        taken = sum(alloc.values())
-        for c, st in members:
-            x = alloc.get(c.id, 0.0)
-            if x > 1e-6:
-                if c.set_flag_on_charge:
-                    flags.add(c.set_flag_on_charge)
-                outputs[c.id] = CellOutput("consume", x,
-                    f"pool charge {x:.0f}W (pct={pct:.0f}, grid={grid_w:.0f})")
-                prev[c.id] = "consume"
-            else:
-                outputs[c.id] = CellOutput("idle", 0.0,
-                    f"pool hold (SoC {st.soc:.0f}%, pct={pct:.0f})")
-                prev[c.id] = "idle"
-        return (outputs, fw.rest_w - taken, flags,
-                _claim_forecast(taken, fw.rest_w, forecast), prev)
-
-    # discharge
-    pool_w = -pct / 100.0 * pool_max_dis
-    weight = {c.id: max(0.0, st.soc - c.min_soc) * c.capacity_kwh
+    # --- Convert to pool power, brake on the block, split across the cells ---
+    pool_w = pct / 100.0 * pool_max_charge
+    # The only correction on the base value. `block_budget_w` is the power the
+    # tier may still draw for the rest of this quarter without pushing the
+    # 15-minute average over the ceiling; None means "no block sensor
+    # configured", which leaves the base untouched.
+    if block_budget_w is not None:
+        pool_w = min(pool_w, max(0.0, block_budget_w))
+    # Split by room left, not by distance below target. The old key weighed
+    # (target + hysteresis - SoC) x capacity, which is a band test per cell:
+    # a cell above its own target scored zero and was parked on "pool hold"
+    # even while the pool as a whole was charging. On 2026-08-10 that put the
+    # full 2500 W on the marstek (5.12 kWh, 15%) and nothing on the goodwe
+    # (15 kWh, 19%), which had by far the most room. Deciding whether to
+    # charge is the band's job and lives elsewhere; this only divides.
+    # No hysteresis here: a share that drifts from 74/26 to 73/27 is not a
+    # decision that can chatter, it is simply the right ratio.
+    weight = {c.id: max(0.0, c.max_soc - st.soc) * c.capacity_kwh
               for c, st in members}
     if sum(weight.values()) <= 0:
-        weight = dict(dis_cap)
-    alloc, _ = _distribute(min(pool_w, pool_max_dis), weight, dis_cap)
-    given = sum(alloc.values())
+        weight = dict(charge_cap)
+    alloc, _ = _distribute(min(pool_w, pool_max_charge), weight, charge_cap)
+    taken = sum(alloc.values())
     for c, st in members:
         x = alloc.get(c.id, 0.0)
         if x > 1e-6:
-            outputs[c.id] = CellOutput("produce", -x,
-                f"pool discharge {x:.0f}W (pct={pct:.0f}, grid={grid_w:.0f})")
-            prev[c.id] = "produce"
+            if c.set_flag_on_charge:
+                flags.add(c.set_flag_on_charge)
+            outputs[c.id] = CellOutput("consume", x,
+                f"pool charge {x:.0f}W (pct={pct:.0f}, grid={grid_w:.0f})")
+            prev[c.id] = "consume"
         else:
             outputs[c.id] = CellOutput("idle", 0.0,
                 f"pool hold (SoC {st.soc:.0f}%, pct={pct:.0f})")
             prev[c.id] = "idle"
-    return outputs, fw.rest_w + given, flags, forecast, prev
-
+    return (outputs, fw.rest_w - taken, flags,
+            _claim_forecast(taken, fw.rest_w, forecast), prev)
 
 def process_tier(group: list, fw: Downstream, bw_data: dict,
                  grid_w: float = 0.0, tier_pct: dict = None,
-                 intent=None) -> tuple:
+                 intent=None, block_budget_w=None) -> tuple:
     """Process >1 cells sharing a position as one tier (parallel pool).
 
-    Target-band hysteresis latch per cell (BatteryOptimisation behaviour):
-      charge   when soc < target − delta, latched up to target + delta;
-      discharge when soc > target + delta, latched down to target − delta;
-      hold inside the band (keep previous direction).
+    One writer, one value. The external charge brain decides how hard the pool
+    charges; this function only turns that into two device setpoints, honouring
+    each cell's own caps, taper and SoC. It never discharges: the brain has no
+    verb for it, and a released cell covers the house from its own regulation.
 
-    The chain's surplus/deficit is split across the *participating* members:
-      • surplus (rest > 0) → only cells whose latch is "charge" actively charge,
-        weighted by take_pct·(target+delta − soc)·capacity. Any leftover surplus
-        is then soaked by free room (room→max_soc) so nothing exports while a
-        cell still has room.
-      • deficit (rest < 0) → only cells whose latch is "discharge" discharge,
-        weighted by take_pct·(soc − floor)·capacity with floor = max(min_soc,
-        target − delta). A charge/hold cell is NEVER forced to discharge below
-        its floor — the target always holds. The deficit it doesn't cover is
-        imported from grid.
+    `block_budget_w` is the single correction on that base value — the power the
+    tier may still draw for the rest of the quarter without pushing the 15-minute
+    average over the ceiling. None leaves the base untouched.
 
-    Cells are driven explicitly every tick (charge / discharge / hold) —
-    never handed over to the device's own regulation. Returns
-    (outputs, rest_out, flags_out, forecast_out, prev); outputs and prev are
-    dicts keyed by cell id.
+    Returns (outputs, rest_out, flags_out, forecast_out, prev); outputs and prev
+    are dicts keyed by cell id.
     """
     rest = fw.rest_w
     flags = set(fw.flags)
@@ -857,115 +1046,17 @@ def process_tier(group: list, fw: Downstream, bw_data: dict,
     if not members:
         return outputs, rest, flags, forecast, prev
 
-    # Per-cell target + latch state (the hysteresis band).
-    targets, states = {}, {}
-    for cfg, st in members:
-        tgt = _cell_target(cfg, forecast)
-        targets[cfg.id] = tgt
-        states[cfg.id] = _latch_state(cfg, st, tgt)
-
     headroom = bw_data[members[0][0].id].headroom_w  # peak import ceiling (W)
 
-    # ---- Live path: BatteryOptimisation pool controller (signed grid ramp) ----
-    if tier_pct is not None:
-        p_out, rest_out, flags, fc, p_prev = _pool_controller(
-            members, fw, headroom, grid_w, tier_pct, flags, forecast,
-            intent=intent)
-        outputs.update(p_out)
-        prev.update(p_prev)
-        return outputs, rest_out, flags, fc, prev
-
-    # ---- Feed-forward fallback (unit tests / no live grid) ----
-    # ---- Step 1: discharge-latch cells cover the deficit (down to band floor) ----
-    # Floor = target − delta (never below min_soc). A charge/hold cell is never
-    # forced to discharge — the target always holds; uncovered deficit → grid.
-    given = 0.0
-    if rest < 0:
-        deficit = -rest
-        avail, weight = {}, {}
-        for cfg, st in members:
-            tgt = targets[cfg.id]
-            floor = max(cfg.min_soc, (tgt - cfg.hysteresis) if tgt is not None
-                        else cfg.min_soc)
-            blocked = bool(cfg.no_discharge_on_flag and cfg.no_discharge_on_flag in flags)
-            cap = (cfg.max_discharge_w * (cfg.take_pct / 100.0)
-                   * _discharge_taper(st.soc, floor))
-            if (cfg.can_discharge and not blocked
-                    and states[cfg.id] == "discharge" and cap > 0):
-                avail[cfg.id] = cap
-                weight[cfg.id] = max(0.0, st.soc - floor) * cfg.capacity_kwh
-            else:
-                avail[cfg.id] = 0.0
-                weight[cfg.id] = 0.0
-        total = min(deficit, sum(avail.values()))
-        alloc, _ = _distribute(total, weight, avail)
-        given = sum(alloc.values())
-        for cfg, st in members:
-            x = alloc.get(cfg.id, 0.0)
-            if x > 1e-6:
-                outputs[cfg.id] = CellOutput("produce", -x,
-                    f"tier discharge {x:.0f}W (deficit={deficit:.0f})")
-                prev[cfg.id] = "produce"
-        rest += given  # remaining deficit after batteries above target chipped in
-
-    # ---- Step 2: charge ----
-    # Per-cell tapered charge cap + weight (prefer cells below their band;
-    # fall back to room so an above-target pool still absorbs surplus).
-    avail, weight = {}, {}
-    any_below = False
-    for cfg, st in members:
-        cap = (cfg.max_charge_w * (cfg.take_pct / 100.0)
-               * _charge_taper(st.soc, cfg.max_soc))
-        avail[cfg.id] = max(0.0, cap) if cfg.can_charge else 0.0
-        tgt = targets[cfg.id]
-        below = tgt is not None and st.soc < tgt - cfg.hysteresis
-        any_below = any_below or below
-        if cfg.can_charge and avail[cfg.id] > 0:
-            top = (tgt + cfg.hysteresis) if tgt is not None else cfg.max_soc
-            weight[cfg.id] = max(0.0, top - st.soc) * cfg.capacity_kwh
-        else:
-            weight[cfg.id] = 0.0
-    if sum(weight.values()) <= 0:           # all at/above band → absorb by room
-        weight = dict(avail)
-    pool_max = sum(avail.values())
-
-    # Feed-forward budget (the live grid-ramp path returned earlier).
-    budget = (max(0.0, headroom + rest) if any_below
-              else max(0.0, rest))          # below target: grid-charge to peak
-    alloc, _ = _distribute(min(budget, pool_max), weight, avail)
-    # Soak any remaining real surplus by free room (avoid export).
-    surplus_left = max(0.0, rest - sum(alloc.values()))
-    if surplus_left > 1e-6:
-        room = {k: max(0.0, avail[k] - alloc.get(k, 0.0)) for k in avail}
-        extra, _ = _distribute(surplus_left, room, room)
-        for k in extra:
-            alloc[k] = alloc.get(k, 0.0) + extra[k]
-    taken = sum(alloc.values())
-
-    for cfg, st in members:
-        x = alloc.get(cfg.id, 0.0)
-        if x > 1e-6:
-            if cfg.set_flag_on_charge:
-                flags.add(cfg.set_flag_on_charge)
-            outputs[cfg.id] = CellOutput("consume", x,
-                f"tier charge {x:.0f}W (grid={grid_w:.0f})")
-            prev[cfg.id] = "consume"
-    rest -= taken
-
-    # ---- Step 3: anyone without an action → hold (keep the latch direction) ----
-    for cfg, st in members:
-        if cfg.id not in outputs:
-            outputs[cfg.id] = CellOutput("idle", 0.0,
-                f"tier: hold (SoC {st.soc:.0f}%, {states[cfg.id]})")
-            prev[cfg.id] = _state_to_prev(states[cfg.id], st)
-
-    return outputs, rest, flags, _claim_forecast(taken, fw.rest_w, forecast), prev
+    p_out, rest_out, flags, fc, p_prev = _pool_controller(
+        members, fw, headroom, grid_w, tier_pct if tier_pct is not None else {},
+        flags, forecast, intent=intent, block_budget_w=block_budget_w)
+    outputs.update(p_out)
+    prev.update(p_prev)
+    return outputs, rest_out, flags, fc, prev
 
 
-# Who is steering the cell — the other axis of a cell output. `action` says what
-# is happening, `control` says who decided it. See NAMING.md §2: the old enum
-# mashed both into one, which is how "self_consumption" ended up sitting next to
-# "idle" as if they were the same kind of word.
+
 _CONTROL_BY_ACTION = {
     "consume": "eb",            # EB commands a setpoint
     "produce": "eb",
@@ -1019,7 +1110,7 @@ def _detail(cfg, st, rest_in, rest_out, bw, out, fc_in, fc_out) -> dict:
 
 def compute(cells: list, forecast_wh: float = 0.0,
             grid_w: float = 0.0, tier_pct: dict = None,
-            intent=None) -> ChainResult:
+            intent=None, block_budget_w=None) -> ChainResult:
     """Run one tick of the energy balancer.
 
     cells: list of (CellConfig, CellState) tuples — all 6 cells.
@@ -1029,6 +1120,13 @@ def compute(cells: list, forecast_wh: float = 0.0,
 
     # Upstream pass
     bw_data = upstream_pass(ordered)
+
+    # The tier SoC, handed to car-brain cells only (read by the "Surplus" gate).
+    if any(cfg.use_car_brain for cfg, _ in ordered):
+        tsoc = _tier_soc(ordered)
+        for cfg, st in ordered:
+            if cfg.use_car_brain:
+                st.tier_soc = tsoc
 
     # Group cells that share a position (consecutive after sort).
     groups = []
@@ -1069,7 +1167,8 @@ def compute(cells: list, forecast_wh: float = 0.0,
         else:
             t_out, new_rest, new_flags, new_forecast, t_prev = process_tier(
                 group, Downstream(rest, forecast, flags), bw_data,
-                grid_w=grid_w, tier_pct=tier_pct, intent=intent)
+                grid_w=grid_w, tier_pct=tier_pct, intent=intent,
+                block_budget_w=block_budget_w)
             for cfg, st in group:
                 out = t_out[cfg.id]
                 bw = bw_data[cfg.id]

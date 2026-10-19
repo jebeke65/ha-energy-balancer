@@ -498,7 +498,7 @@ def test_N1_car_charger_never_discharges():
 # =====================================================================
 
 def test_O1_take_pct_zero_no_consume():
-    """Slider op 0 = cel neemt niks op, surplus gaat door."""
+    """Slider at 0 = the cell takes nothing, the surplus passes on."""
     cells = make_chain(solar_w=5000, house_w=1000,
                        goodwe_kw={"soc": 25, "target": 30})
     # Override take_pct to 0
@@ -512,7 +512,7 @@ def test_O1_take_pct_zero_no_consume():
 
 
 def test_O2_take_pct_zero_smart_no_grid_charge():
-    """Smart mode + slider 0 = ook geen grid charge."""
+    """Smart mode + slider 0 = no grid charge either."""
     cells = make_chain(solar_w=0, house_w=500,
                        goodwe_kw={"soc": 15, "target": 30})
     for cfg, st in cells:
@@ -524,7 +524,7 @@ def test_O2_take_pct_zero_smart_no_grid_charge():
 
 
 def test_O3_take_pct_partial():
-    """Slider op 50% = cel neemt helft van surplus."""
+    """Slider at 50% = the cell takes half of the surplus."""
     cells = make_chain(solar_w=5000, house_w=1000,
                        goodwe_kw={"soc": 50, "target": 30, "measured": 2000})
     for cfg, st in cells:

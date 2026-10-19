@@ -170,8 +170,12 @@
 <h2>Costs and accounting</h2>
 
 <p>
-  Every figure exists for three periods — <code>daily_</code>, <code>monthly_</code> and
-  <code>yearly_</code> — and the counters survive a restart.
+  Every figure exists for four periods — <code>daily_</code>, <code>monthly_</code>,
+  <code>yearly_</code> and <code>lifetime_</code> — and the counters survive a restart.
+  The <code>lifetime_</code> energy sensors never reset and are published as
+  <code>total_increasing</code>, so they can be used in Home Assistant's Energy dashboard.
+  House and solar energy are counted too (<code>sensor.eb_lifetime_house_energy</code>,
+  <code>sensor.eb_lifetime_solar_energy</code>).
 </p>
 
 <div class="table-scroll">
@@ -202,6 +206,7 @@
   <tr><td><code>sensor.eb_diag_battery_capacity</code></td><td>Total configured storage, kWh.</td></tr>
   <tr><td><code>sensor.eb_diag_update_interval</code></td><td>The interval actually in use.</td></tr>
   <tr><td><code>sensor.eb_diag_charger_count</code></td><td>How many charger cells were found.</td></tr>
+  <tr><td><code>sensor.eb_&lt;cell&gt;_performance</code></td><td>How closely a cell follows the power EB ordered, in %. Only meaningful while EB is commanding that cell; otherwise an attribute says why there is nothing to measure.</td></tr>
   <tr><td><code>sensor.eb_diag_sensors_unavailable</code></td><td>How many configured sensors are currently unavailable. Anything other than zero explains a lot.</td></tr>
 </table>
 </div>
@@ -232,6 +237,9 @@
   <tr><td><code>number.eb_&lt;pool&gt;_no_sun_min_soc</code></td><td>Floor for a dull forecast. Pool-level.</td></tr>
   <tr><td><code>number.eb_&lt;pool&gt;_manual_min_soc</code></td><td>The verbatim floor. Pool-level.</td></tr>
   <tr><td><code>number.eb_peak_limit_w</code></td><td>The fallback import ceiling.</td></tr>
+  <tr><td><code>number.eb_peak_max_w</code></td><td>Your own peak maximum. Its minimum moves with the monthly peak, so it can only raise the ceiling.</td></tr>
+  <tr><td><code>number.eb_&lt;cell&gt;_surplus_tier_soc</code></td><td>Car brain, <code>Surplus</code> mode: the tier SoC from which the car may charge.</td></tr>
+  <tr><td><code>number.eb_&lt;cell&gt;_start_margin_w</code>, <code>_debounce_s</code>, <code>_solar_debounce_s</code>, <code>_average_n</code>, <code>_limit_step_w</code></td><td>Car brain tunables. Only created on a cell with <code>use_car_brain</code> on.</td></tr>
 </table>
 </div>
 
@@ -255,6 +263,15 @@
       <td><code>balanced</code> runs the floor algorithm with its safeguards;
           <code>manual</code> uses the manual floor slider verbatim, which is how you
           deliberately go below what the safeguards allow.</td></tr>
+  <tr><td><code>select.eb_&lt;cell&gt;_mode</code></td>
+      <td>The car brain's mode: <code>Off</code>, <code>Automatisch</code>,
+          <code>Solar</code> or <code>Surplus</code>. Only on a cell with
+          <code>use_car_brain</code> on. With <code>charge_mode_entity</code> set it is a
+          window on that helper (picking an option sets the helper); otherwise it holds
+          its own value.</td></tr>
+  <tr><td><code>select.eb_month_start_peak_policy</code></td>
+      <td><code>previous</code>, <code>configured</code> or <code>zero</code>. See
+          <a href="configuration.html">Configuration</a>.</td></tr>
 </table>
 </div>
 

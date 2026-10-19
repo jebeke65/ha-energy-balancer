@@ -306,6 +306,56 @@
   </p>
 </div>
 
+<h4>Car brain (optional)</h4>
+<p>
+  By default a car charger cell is served like any other cell: it takes its share of the
+  rest. Set <code>use_car_brain</code> to <code>true</code> and the cell instead runs a
+  dedicated charging policy with four modes. The flag can be flipped live, in both
+  directions, without a reload.
+</p>
+<div class="table-scroll">
+<table>
+  <tr><th>Mode</th><th>What the car gets</th></tr>
+  <tr><td><code>Off</code></td><td>Nothing. The charger is held at 0.</td></tr>
+  <tr><td><code>Automatisch</code></td><td>Always charges: at least the charge floor, up to
+      the charger maximum, from the grid if the sun does not cover it.</td></tr>
+  <tr><td><code>Solar</code></td><td>Only surplus. A moving average of the surplus, times
+      the cell's take&nbsp;%, starts the car once it clears the charge floor plus a
+      margin, and stops it after it has stayed below for <code>solar_debounce_s</code>.</td></tr>
+  <tr><td><code>Surplus</code></td><td>The home batteries first. The car waits until the
+      tier reaches <code>surplus_tier_soc</code>, and from there on behaves exactly like
+      <code>Solar</code>. It waits again once the tier drops 5 points below that value.</td></tr>
+</table>
+</div>
+<p>
+  The mode tokens are kept verbatim (<code>Automatisch</code> included), because they are
+  compared literally. Point <code>charge_mode_entity</code> at an <code>input_select</code>
+  to drive the mode from your own helper; without one, the cell keeps its own value in
+  <code>select.eb_&lt;cell&gt;_mode</code>.
+</p>
+<div class="table-scroll">
+<table>
+  <tr><th>Key</th><th>Default</th><th>Meaning</th></tr>
+  <tr><td><code>use_car_brain</code></td><td><code>false</code></td><td>Run the car brain on this cell.</td></tr>
+  <tr><td><code>car_mode</code></td><td><code>Automatisch</code></td><td>Mode when no <code>charge_mode_entity</code> is set.</td></tr>
+  <tr><td><code>surplus_tier_soc</code></td><td>80&nbsp;%</td><td><code>Surplus</code> only: the tier SoC from which the car may take the sun.</td></tr>
+  <tr><td><code>start_margin_w</code></td><td>50&nbsp;W</td><td>How far above the charge floor the surplus must be before the car starts.</td></tr>
+  <tr><td><code>debounce_s</code></td><td>15&nbsp;s</td><td>How long a start condition must hold.</td></tr>
+  <tr><td><code>solar_debounce_s</code></td><td>300&nbsp;s</td><td>How long the surplus may stay too low before the car is stopped.</td></tr>
+  <tr><td><code>average_n</code></td><td>5</td><td>Number of ticks in the moving average of the surplus.</td></tr>
+  <tr><td><code>limit_step_w</code></td><td>50&nbsp;W</td><td>Smallest change worth sending to the charger.</td></tr>
+</table>
+</div>
+<div class="note">
+  <p>
+    <strong>How the tier SoC is measured.</strong> It is the capacity-weighted average of
+    every online <code>house_battery</code> cell that has a state-of-charge sensor. A
+    battery that is offline does not count, so one that falsely reports 0&nbsp;% cannot
+    hold the car back. When no battery reports a SoC at all, the car waits: in
+    <code>Surplus</code> the batteries go first, also when in doubt.
+  </p>
+</div>
+
 <footer class="foot">
   Next: <a href="entities.html">Devices &amp; entities</a>
 </footer>

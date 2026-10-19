@@ -8,10 +8,15 @@ generate_dashboard:
         text:
     dashboard_path:
       required: false
-      default: "ebi-dashboard"
+      default: "energy-balancer"
       example: "energy-balancer"
       selector:
         text:
+    dashboard_icon:
+      required: false
+      default: "mdi:scale-balance"
+      selector:
+        icon:
 
 set_option:
   # Only the options listed in EBCoordinator.LIVE_ALGO_KEYS (per cell) and

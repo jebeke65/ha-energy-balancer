@@ -35,27 +35,33 @@
 
 <h2>Getting it</h2>
 
+<p>Either let the integration add it (admin only):</p>
 <pre><code>action: energy_balancer.generate_dashboard
 data:
   dashboard_title: Energy
   dashboard_path: energy-balancer
 </code></pre>
 
-<p>Three things happen:</p>
-
-<ol>
-  <li>The two card bundles that ship with the integration are copied into
-      <code>www/energy_balancer/</code> — <code>eb-cards.js</code> and
-      <code>eb-chain-card-r2.js</code>. They are only rewritten when their content has
-      actually changed.</li>
-  <li>Both are registered as Lovelace resources, with a content hash appended to the URL
-      so a browser cannot serve a stale copy after an upgrade.</li>
-  <li>A dashboard is built from your actual cells and registered at the path you gave.</li>
-</ol>
+<p>
+  or create it yourself: <em>Settings → Dashboards → Add dashboard → New dashboard from
+  scratch</em>, open it, choose <em>Edit → ⋮ → Raw configuration editor</em> and replace
+  everything with:
+</p>
+<pre><code>strategy:
+  type: custom:energy-balancer
+</code></pre>
 
 <p>
-  The dashboard reflects <em>your</em> setup: one battery or three, a charger or none.
-  Re-run the service after adding or removing a cell.
+  That one line is all that is stored. The dashboard is a Lovelace <strong>strategy</strong>:
+  every time it is opened, the browser asks Energy Balancer for the views, and they are
+  built from your configuration at that moment — one battery or three, a charger or none.
+  Add or remove a cell and the dashboard follows; there is nothing to regenerate.
+</p>
+
+<p>
+  The cards are served by the integration itself and loaded on every page, so there is
+  no Lovelace resource to manage and nothing is copied into <code>www/</code>. A content
+  hash in the URL makes browsers pick up a new bundle after an upgrade.
 </p>
 
 <h2>What is on it</h2>
@@ -103,19 +109,17 @@ data:
 <table>
   <tr><td><code>eb-control-card</code></td><td>Observer mode, take percentages, floors.</td></tr>
   <tr><td><code>eb-config-card</code></td><td>Current configuration, read-only.</td></tr>
-  <tr><td><code>eb-load-priority-card</code></td><td>The chain order — who gets surplus first.</td></tr>
   <tr><td><code>eb-today-plan-card</code></td><td>What the forecast implies for the rest of today.</td></tr>
   <tr><td><code>eb-weather-card</code></td><td>Conditions, as context for the forecast.</td></tr>
   <tr><td><code>eb-schedule-card</code></td><td>Time-based settings, where you use them.</td></tr>
   <tr><td><code>eb-chart-card</code> / <code>eb-gauge-card</code></td><td>Generic history and gauge cards in the same visual language.</td></tr>
-  <tr><td><code>eb-diagnose-button</code></td><td>Dumps the current chain state for a bug report.</td></tr>
 </table>
 </div>
 
 <h2>Using the cards yourself</h2>
 
 <p>
-  Once the resource is registered, the cards are available anywhere in Home Assistant.
+  The cards are available anywhere in Home Assistant, not just on this dashboard.
   Add them by hand in YAML mode:
 </p>
 
@@ -125,19 +129,22 @@ entity: sensor.eb_layer_home_battery
 
 <div class="note">
   <p>
-    Re-running <code>generate_dashboard</code> <strong>overwrites</strong> the dashboard
-    at that path. If you have customised it, generate to a different path, or copy your
-    version somewhere safe first.
+    <code>generate_dashboard</code> never changes a dashboard it did not create. If the
+    path is already in use, the call is refused and nothing is touched. Want your own
+    variant? Take control of the dashboard in the editor: Home Assistant then turns the
+    strategy into a normal, editable dashboard.
   </p>
 </div>
 
 <h2>If the cards do not render</h2>
 
 <ol>
-  <li>Check that <code>www/energy_balancer/eb-cards.js</code> exists.</li>
-  <li>Check <em>Settings → Dashboards → Resources</em> for the entry.</li>
+  <li>Check that Energy Balancer is set up under <em>Settings → Devices &amp; services</em>.
+      The strategy shows an explanation instead of the views when it is not.</li>
   <li>Hard-refresh the browser. On the companion app, clear the frontend cache.</li>
-  <li>On a fresh install, restart Home Assistant once — the registration needs it.</li>
+  <li>Coming from 0.1.0: the old resources under <code>/local/energy_balancer/</code>
+      are removed automatically at startup. If you added them in YAML mode, remove them
+      there yourself, or the cards load twice.</li>
 </ol>
 
 <footer class="foot">

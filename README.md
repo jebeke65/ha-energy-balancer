@@ -75,6 +75,12 @@ That matters because a peak is not a running cost you can win back tomorrow. It 
 high-water mark. One careless quarter of an hour in a month sets a price for the whole
 period, and nothing you do afterwards lowers it.
 
+It also knows what is actually billed. Give it your running 15-minute average import
+and the batteries get a budget for the rest of the current quarter hour, rather than a
+reaction to whatever the meter shows this second. Around midnight at the turn of a month
+it treats the stale peak that meters keep showing for a while, so the first quarter of
+a new month is not set by last month's number.
+
 **It is not a device integration.** It never talks to an inverter, a charger or a
 battery. It reads the sensors you already have and calls the scripts you already wrote.
 Everything vendor-specific stays on your side of the line — which is why it works with
@@ -94,6 +100,22 @@ pool with one shared target, split in proportion to how much room each still has
 is what the hardware is measured to be doing. A cell set to `autonomous` can still be
 observed discharging — that is not a contradiction, it is the point.
 
+## Car charging
+
+A car charger cell can run a dedicated charging policy (`use_car_brain`) with four
+modes:
+
+| Mode | What the car gets |
+|---|---|
+| `Off` | Nothing |
+| `Automatisch` | Always charges, at least the charge floor, from the grid if needed |
+| `Solar` | Only the surplus, times the cell's take % |
+| `Surplus` | The home batteries first: the car waits until they reach a set SoC (`surplus_tier_soc`), then behaves like `Solar` |
+
+`Surplus` swaps the priority between car and batteries without moving any cell in the
+chain, which is useful when the price you get for exported energy, or the price you
+are reimbursed for home charging, is close to what importing costs.
+
 ## Installation
 
 ### HACS (custom repository)
@@ -112,7 +134,7 @@ directory and restart.
 
 | Required | |
 |---|---|
-| Home Assistant | 2024.6.0 or newer |
+| Home Assistant | 2024.7.0 or newer |
 | Solar production | sensor in W |
 | House consumption | sensor in W |
 | Grid power | sensor in W, **positive when importing** |
@@ -142,20 +164,33 @@ figures and `sensor.eb_net` against your meter — including the sign. Only then
 
 ## Dashboard
 
-A complete dashboard is generated from your own configuration:
+A complete dashboard is built from your own configuration. Add it with
+`energy_balancer.generate_dashboard` (admin only), or create a dashboard yourself and
+set its raw configuration to:
 
 ```yaml
-action: energy_balancer.generate_dashboard
-data:
-  dashboard_title: Energy
-  dashboard_path: energy-balancer
+strategy:
+  type: custom:energy-balancer
 ```
+
+It is a Lovelace strategy: the views are built each time the dashboard opens, so it
+follows your configuration without being regenerated. The cards ship with the
+integration and are served by it; nothing is copied into `www/`.
 
 ## Contributing
 
-Issues and pull requests are welcome. Tests live in
-`custom_components/energy_balancer/tests/` and run with `pytest`.
+Issues and pull requests are welcome. Tests live in `tests/` and run with `pytest`,
+or without any dependencies via `python3 tests/run_tests_stdlib.py`. `tests/test_car_parity.py`
+is a standalone script (`python3 tests/test_car_parity.py --quick`) that compares the
+car brain tick by tick against the original AppDaemon app it was ported from; it needs
+that app on disk, so neither runner picks it up.
+
+## Credits
+
+The dashboard cards, the dashboard template, the dashboard generator and the sensor
+auto-detection are derived from [SEM](https://github.com/traktore-org/sem-community)
+(Solar Energy Management) by belinea4071, MIT License. See [NOTICE](NOTICE).
 
 ## Licence
 
-MIT — see [LICENSE](LICENSE).
+MIT — see [LICENSE](LICENSE) and [NOTICE](NOTICE).

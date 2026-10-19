@@ -46,6 +46,7 @@
           "take_pct": "Take % (entity id or constant)",
           "hysteresis": "Hysteresis (%)",
           "charge_floor_w": "Charge floor (W)",
+          "surplus_tier_soc": "Surplus: car charges from tier SoC (%)",
           "sunny_min_soc": "Sunny min SoC (%)",
           "no_sun_min_soc": "No-sun min SoC (%)",
           "pv_weight": "PV weight (entity id or constant)",
@@ -110,6 +111,7 @@
           "take_pct": "Take % (entity id or constant)",
           "hysteresis": "Hysteresis (%)",
           "charge_floor_w": "Charge floor (W)",
+          "surplus_tier_soc": "Surplus: car charges from tier SoC (%)",
           "sunny_min_soc": "Sunny min SoC (%)",
           "no_sun_min_soc": "No-sun min SoC (%)",
           "pv_weight": "PV weight (entity id or constant)",
@@ -148,7 +150,7 @@
   "services": {
     "generate_dashboard": {
       "name": "Generate dashboard",
-      "description": "Builds an Energy Balancer dashboard from the current configuration and registers it with Home Assistant.",
+      "description": "Adds an Energy Balancer dashboard to the sidebar (admin only). The dashboard follows the current configuration by itself. An existing dashboard at the same path is never changed: the call is refused instead.",
       "fields": {
         "dashboard_title": {
           "name": "Title",
@@ -156,7 +158,11 @@
         },
         "dashboard_path": {
           "name": "URL path",
-          "description": "URL path. Must contain a hyphen."
+          "description": "URL path. Must contain a hyphen and must not be in use by another dashboard."
+        },
+        "dashboard_icon": {
+          "name": "Icon",
+          "description": "Icon shown in the sidebar."
         }
       }
     },

@@ -1,0 +1,41 @@
+Energy Balancer
+Copyright (c) 2026 jebeke65
+
+This project contains code derived from SEM (Solar Energy Management),
+https://github.com/traktore-org/sem-community, which is licensed under the
+MIT License reproduced below.
+
+Derived from SEM:
+  - custom_components/energy_balancer/dashboard/card/src/  (the dashboard cards,
+    their base classes and the bundle entry point) and the built bundle
+    custom_components/energy_balancer/dashboard/card/dist/eb-cards.js
+  - custom_components/energy_balancer/dashboard/eb_dashboard_template.yaml
+  - custom_components/energy_balancer/dashboard_gen.py  (dashboard generation)
+  - custom_components/energy_balancer/detect.py         (sensor auto-detection)
+  - custom_components/energy_balancer/config_flow.py    (structure of the setup
+    wizard)
+
+--------------------------------------------------------------------------------
+SEM license:
+
+MIT License
+
+Copyright (c) 2025 belinea4071
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.

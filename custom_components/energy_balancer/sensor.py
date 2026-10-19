@@ -1,7 +1,8 @@
 """Energy Balancer sensor platform.
 
-Publishes one sensor.eb_<cell> per chain cell, a status sensor, and one
-block per priority layer (power / SoC / target / energy).
+Publishes one sensor.eb_<cell> per chain cell, a sensor.eb_<cell>_performance
+per steerable cell, a status sensor, and one block per priority layer
+(power / SoC / target / energy).
 """
 
 from __future__ import annotations
@@ -11,11 +12,24 @@ from homeassistant.components.sensor import (
     SensorEntity,
     SensorStateClass,
 )
-from homeassistant.const import UnitOfEnergy, UnitOfPower
+from homeassistant.const import PERCENTAGE, UnitOfEnergy, UnitOfPower
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN, ENTITY_PREFIX
 from .devices import cell_device, costs_device, layer_device, system_device
+
+
+# Cells EB never steers: their output is copied straight from the meter.
+_VIRTUAL_CELL_TYPES = ("solar", "house", "grid")
+
+# Actions where EB actually orders a power. On idle/autonomous/off/offline EB is
+# not steering, so there is nothing for the cell to be right or wrong about.
+_COMMANDED_ACTIONS = ("consume", "produce")
+
+# Below this the ratio stops meaning anything: dividing by a near-zero setpoint
+# turns a few watts of measurement noise into hundreds of percent. This is
+# arithmetic safety, not filtering.
+_PERFORMANCE_FLOOR_W = 50.0
 
 
 def _layer_device_info(layer: dict):
@@ -33,8 +47,13 @@ async def async_setup_entry(hass, entry, async_add_entities):
     data = coordinator.data or {}
 
     entities: list[SensorEntity] = []
+    cell_type = data.get("cell_type", {})
     for cell_id in data.get("outputs", {}):
         entities.append(EBCellSensor(coordinator, cell_id))
+        # Only cells EB actually steers. For solar/house/net the output IS the
+        # measurement, so a follow-up ratio would be a constant 100.
+        if cell_type.get(cell_id) not in _VIRTUAL_CELL_TYPES:
+            entities.append(EBCellPerformanceSensor(coordinator, cell_id))
     entities.append(EBStatusSensor(coordinator))
 
     for layer in data.get("layers", []):
@@ -156,6 +175,82 @@ class EBCellSensor(_EBBase):
             "forecast_out_wh": detail.get("forecast_out_wh", 0),
             "take_pct": detail.get("take_pct", 100),
             "source_sensor": self._data.get("source_sensors", {}).get(self._cell_id, ""),
+            "timestamp": self._data.get("timestamp"),
+        }
+
+
+class EBCellPerformanceSensor(_EBBase):
+    """How closely one cell follows the power EB ordered, in percent.
+
+    100 means the cell does exactly what it was told. Below that it is ignoring
+    the order — the Smappee freezing its charge limit reads ~35. Above that it
+    takes more than it was given — the goodwe on eco_charge reads ~160.
+
+    Deliberately RAW: no smoothing, no dead band, no hysteresis, recomputed every
+    tick. What counts as "off" depends entirely on the hardware behind the cell,
+    so that judgement belongs with whoever acts on it — a numeric_state trigger
+    with `for:`, or a filter sensor. Baking a threshold in here would make the
+    integration guess on the user's behalf, and guess wrong per device.
+
+    Returns None (unknown) when EB is not steering the cell, so a released or
+    idle cell never looks like a fault.
+    """
+
+    _attr_native_unit_of_measurement = PERCENTAGE
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_suggested_display_precision = 0
+
+    def __init__(self, coordinator, cell_id: str) -> None:
+        super().__init__(coordinator, f"{cell_id}_performance",
+                         f"{cell_id}_performance")
+        self._cell_id = cell_id
+        self._attr_name = f"EB {cell_id} performance"
+        self._attr_device_info = cell_device(cell_id)
+
+    def _pair(self) -> tuple[float, float] | None:
+        """(commanded_w, measured_w) — both in EB's sign convention
+        (+ = charge), or None when EB is not commanding this cell."""
+        out = self._data.get("outputs", {}).get(self._cell_id)
+        if out is None or out.action not in _COMMANDED_ACTIONS:
+            return None
+        detail = self._data.get("details", {}).get(self._cell_id, {})
+        return float(out.power_w), float(detail.get("measured_w") or 0.0)
+
+    def _not_applicable(self) -> str | None:
+        """Why there is nothing to measure right now, or None when there is.
+
+        The state can only be a number or `unknown`, and `unknown` reads as
+        "no idea" to anything watching for broken entities. Here it is the
+        opposite: EB knows exactly why there is no ratio. Say so in an
+        attribute, so a monitor can tell "not applicable" from "dead"."""
+        pair = self._pair()
+        if pair is None:
+            return "cell not commanded"
+        if abs(pair[0]) < _PERFORMANCE_FLOOR_W:
+            return f"commanded below {_PERFORMANCE_FLOOR_W:.0f} W"
+        return None
+
+    @property
+    def native_value(self):
+        if self._not_applicable() is not None:
+            return None
+        commanded, measured = self._pair()
+        return round(measured / commanded * 100.0, 1)
+
+    @property
+    def extra_state_attributes(self):
+        out = self._data.get("outputs", {}).get(self._cell_id)
+        if out is None:
+            return None
+        detail = self._data.get("details", {}).get(self._cell_id, {})
+        reason = self._not_applicable()
+        return {
+            "action": out.action,
+            "commanded_w": round(float(out.power_w), 1),
+            "measured_w": round(float(detail.get("measured_w") or 0.0), 1),
+            "floor_w": _PERFORMANCE_FLOOR_W,
+            "not_applicable": reason is not None,
+            "reason": reason,
             "timestamp": self._data.get("timestamp"),
         }
 
@@ -313,6 +408,10 @@ _KWH = UnitOfEnergy.KILO_WATT_HOUR
 _W = UnitOfPower.WATT
 _MEAS = SensorStateClass.MEASUREMENT
 _TOT = SensorStateClass.TOTAL
+# The energy dashboard only accepts TOTAL / TOTAL_INCREASING, and a TOTAL that
+# resets needs a last_reset we do not publish. The lifetime counters never reset,
+# so TOTAL_INCREASING is both true and the shape the dashboard wants.
+_TOTINC = SensorStateClass.TOTAL_INCREASING
 
 # suffix -> (device_class, unit, state_class, device)
 # device: "costs" | "net" | "system"
@@ -358,6 +457,13 @@ _EXTRA_SPEC["lifetime_total_savings"] = (SensorDeviceClass.MONETARY, _EUR, _TOT,
 # solar cell. EB's own integration could only count from boot, so it read far too low;
 # the inverter already measures this accurately.
 _EXTRA_SPEC["daily_solar_energy"] = (SensorDeviceClass.ENERGY, _KWH, _TOT, "solar")
+# Lifetime counters for the energy dashboard. They start at zero the day this
+# lands — the P1 meter keeps the long history for grid, so only house (which no
+# other sensor measures) and solar have no earlier source.
+_EXTRA_SPEC["lifetime_grid_import_energy"] = (SensorDeviceClass.ENERGY, _KWH, _TOTINC, "net")
+_EXTRA_SPEC["lifetime_grid_export_energy"] = (SensorDeviceClass.ENERGY, _KWH, _TOTINC, "net")
+_EXTRA_SPEC["lifetime_solar_energy"] = (SensorDeviceClass.ENERGY, _KWH, _TOTINC, "solar")
+_EXTRA_SPEC["lifetime_house_energy"] = (SensorDeviceClass.ENERGY, _KWH, _TOTINC, "house")
 
 
 class EBExtraSensor(_EBBase):

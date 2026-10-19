@@ -1,8 +1,8 @@
 /**
  * SEM Cards — Single bundled entry point
  *
- * All SEM custom cards are imported here and bundled by Rollup
- * into a single eb-cards.js file for Lovelace resource registration.
+ * All cards and the dashboard strategy are imported here and bundled by Rollup
+ * into a single eb-cards.js file, served by the integration itself.
  */
 
 // Display cards
@@ -36,12 +36,13 @@ import './cards/eb-today-plan-card.js';
 import './cards/eb-flow-card.js';
 import './cards/eb-system-diagram-card.js';
 import './cards/eb-chart-card.js';
-import './cards/eb-load-priority-card.js';
 import './cards/eb-control-card.js';
 import './elements/eb-entity-picker.js';
 import './cards/eb-config-card.js';
 import './cards/eb-onboarding-banner.js';
-import './cards/eb-diagnose-button.js';
+
+// Dashboard strategy (strategy: type: custom:energy-balancer)
+import './strategy/eb-dashboard-strategy.js';
 
 // Version info
 console.info(

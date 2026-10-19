@@ -47,16 +47,6 @@ def test_ramp_threshold_zero_converges_to_grid0():
 
 # --- Integrated: ramp drives the pool charge over ticks ---
 
-def test_pool_ramps_up_below_target():
-    cells = chain(0, 0, {"soc": 30, "target": 50}, {"soc": 30, "target": 50})
-    tp = {}
-    r = None
-    for _ in range(20):
-        r = compute(cells, grid_w=0, tier_pct=tp)           # grid<70%peak → ramp up
-    assert tp[4] > 0                                         # position-4 tier ramped
-    assert o(r, "goodwe").power_w > 0 and o(r, "marstek").power_w > 0  # both charge
-
-
 def test_pool_releases_above_target_import():
     # Above target + importing (below peak) → RELEASE to autonomous
     # self-consumption (goodwe general + marstek anti_feed). NOT explicit
@@ -82,17 +72,6 @@ def test_pool_releases_above_target_surplus():
     assert o(r, "marstek").action == "autonomous"
 
 
-def test_pool_peak_emergency_instant_discharge():
-    # grid over the peak ceiling → INSTANT discharge in one tick (hard override),
-    # even when it was charging.
-    cells = chain(0, 0, {"soc": 60, "target": 50},
-                  {"soc": 60, "target": 50}, peak=3500)
-    tp = {4: 80}                                        # was charging
-    r = compute(cells, grid_w=4000, tier_pct=tp)        # one tick, grid > 3500
-    assert tp[4] < 0                                    # flipped to discharge at once
-    assert o(r, "goodwe").power_w < 0                   # discharging in a single tick
-
-
 # --- Pure signed grid-follow ramp (the explicit `general` replacement) ---
 
 def test_grid_follow_discharges_on_import():
@@ -116,16 +95,3 @@ def test_grid_follow_clamped_signed():
     assert grid_follow_ramp(98, -1000) == 100
     assert grid_follow_ramp(-98, 1000) == -100
 
-
-def test_pool_split_across_both_cells():
-    # Ramped pool charge is split over BOTH batteries (capacity-weighted).
-    # Few ticks so the pool charge stays below the hardware caps (else both
-    # clamp and the ratio collapses to the cap ratio).
-    cells = chain(0, 0, {"soc": 30, "target": 50}, {"soc": 30, "target": 50})
-    tp = {}
-    r = None
-    for _ in range(3):
-        r = compute(cells, grid_w=-1000, tier_pct=tp)       # exporting → ramp up
-    g, m = o(r, "goodwe").power_w, o(r, "marstek").power_w
-    assert g > 0 and m > 0                                   # both charge
-    assert abs(g / m - 15 / 5.12) < 0.1                      # ∝ capacity

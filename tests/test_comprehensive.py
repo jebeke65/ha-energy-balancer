@@ -499,7 +499,7 @@ def test_EDGE_06_soc_exactly_at_boundaries():
 
 
 # =====================================================================
-# NOODSTOP SCENARIO'S — wat als de BP fout interpreteert?
+# EMERGENCY-STOP SCENARIOS — what if the BP misinterprets?
 # =====================================================================
 
 def test_NOODSTOP_01_consume_zero_is_safe():

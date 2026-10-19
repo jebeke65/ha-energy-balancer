@@ -26,6 +26,19 @@ _CELL_PARAMS = (
     ("hysteresis", PERCENTAGE, 1),
     ("charge_floor_w", "W", 50),
 )
+
+# Car-brain tunables (ported from ManageCarCharge). Only created for a cell that
+# actually runs the brain — otherwise every cell, battery ones included, would
+# grow five sliders that nothing reads.
+_CAR_BRAIN_PARAMS = (
+    ("start_margin_w", "W", 10),
+    ("debounce_s", "s", 5),
+    ("solar_debounce_s", "s", 10),
+    ("average_n", None, 1),
+    ("limit_step_w", "W", 10),
+    # "Surplus" mode: tier % from which the car may take the sun.
+    ("surplus_tier_soc", PERCENTAGE, 1),
+)
 # SoC targets are pool-level: the tier target is a capacity-weighted average,
 # so per-cell values are meaningless — one knob per storage pool writes the
 # same value to every member cell.
@@ -44,7 +57,10 @@ async def async_setup_entry(hass, entry, async_add_entities) -> None:
     for cfg in coordinator.cell_configs:
         entities.append(EBTakeNumber(hass, entry, coordinator, cfg.id))
         io = coordinator.cell_io.get(cfg.id, {})
-        for key, unit, step in _CELL_PARAMS:
+        keys = _CELL_PARAMS
+        if io.get("use_car_brain"):
+            keys = keys + _CAR_BRAIN_PARAMS
+        for key, unit, step in keys:
             raw = io.get(key)
             if raw is None or is_entity_ref(raw):
                 continue  # entity-driven param: that entity is the knob
@@ -75,6 +91,9 @@ async def async_setup_entry(hass, entry, async_add_entities) -> None:
     entities.append(EBParamNumber(
         hass, entry, coordinator, None, "peak_limit_w",
         float(peak), spec.minv, spec.maxv, 100, "W"))
+    # The user's own max. Only ever raises — see EBPeakMaxNumber.
+    entities.append(EBPeakMaxNumber(hass, entry, coordinator,
+                                    float(coordinator.peak_max_w)))
     async_add_entities(entities)
 
 
@@ -202,3 +221,22 @@ class EBTierParamNumber(NumberEntity):
                 self._key, value, member)
         self._attr_native_value = value
         self.async_write_ha_state()
+
+
+class EBPeakMaxNumber(EBParamNumber):
+    """The user's peak ceiling, with a lower bound that moves.
+
+    You may always allow MORE than reality forces — a winter month with cars to
+    charge. You may not allow less: the monthly peak is already spent and no
+    setting brings it back, so the entity's minimum follows
+    max(measured peak, start reference) instead of being a fixed number.
+    """
+
+    def __init__(self, hass, entry, coordinator, current: float) -> None:
+        spec = SYSTEM_SPEC["peak_max_w"]
+        super().__init__(hass, entry, coordinator, None, "peak_max_w",
+                         current, spec.minv, spec.maxv, 100, "W")
+
+    @property
+    def native_min_value(self) -> float:
+        return float(self._coordinator.peak_max_floor())

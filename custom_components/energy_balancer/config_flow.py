@@ -1,5 +1,7 @@
 """Config + options flow for Energy Balancer (modelled on SEM's wizard).
 
+Portions derived from SEM (https://github.com/traktore-org/sem-community), MIT License, Copyright (c) 2025 belinea4071. See NOTICE.
+
 Single config entry. System sensors step -> cells menu (add/edit/remove) -> create.
 async_step_import migrates the existing YAML (packages/energy_balancer.yaml) into
 a config entry so the running observer setup carries over unchanged.
@@ -46,7 +48,8 @@ _ACTUATOR_KEYS = ("actuator_service", "actuator_unit", "actuator_voltage", "actu
 _ALGO_KEYS = ("take_pct", "hysteresis", "charge_floor_w", "sunny_min_soc",
               "no_sun_min_soc", "min_soc_mode", "manual_min_soc",
               "pv_weight", "connected_sensor", "charging_sensor",
-              "charge_mode_entity", "set_flag_on_charge", "no_discharge_on_flag")
+              "charge_mode_entity", "set_flag_on_charge", "no_discharge_on_flag",
+              "surplus_tier_soc")
 
 _MENU_ADD = "➕ Add cell"
 _MENU_FINISH = "✓ Finish"
@@ -104,6 +107,27 @@ def _system_schema(data: dict, detected: dict | None = None) -> vol.Schema:
         vol.Optional(CONF_PEAK_LIMIT_SENSORS, default=d.get(CONF_PEAK_LIMIT_SENSORS, [])):
             selector.EntitySelector(selector.EntitySelectorConfig(
                 domain=["sensor", "input_number"], multiple=True)),
+        # Upper brake: the running 15-minute average import. Empty = no block cap.
+        vol.Optional("block_demand_sensor", default=d.get("block_demand_sensor", "")):
+            selector.EntitySelector(selector.EntitySelectorConfig(domain="sensor")),
+        # Month rollover. The meter keeps last month's peak for the first quarter
+        # of a new month, so without this the fresh month inherits the old peak.
+        vol.Optional("month_peak_sensor", default=d.get("month_peak_sensor", "")):
+            selector.EntitySelector(selector.EntitySelectorConfig(
+                domain=["sensor", "input_number"])),
+        vol.Optional("month_start_peak_policy",
+                     default=d.get("month_start_peak_policy", "previous")):
+            selector.SelectSelector(selector.SelectSelectorConfig(
+                options=["previous", "configured", "zero"],
+                mode=selector.SelectSelectorMode.DROPDOWN)),
+        vol.Optional("month_start_window_min",
+                     default=d.get("month_start_window_min", 30)):
+            _num(0, 240, 1, "min"),
+        # How long before midnight the same cap is already active — the brake
+        # has to bite before the boundary, not race to catch it.
+        vol.Optional("month_end_window_min",
+                     default=d.get("month_end_window_min", 0)):
+            _num(0, 1440, 1, "min"),
         vol.Optional(CONF_UPDATE_INTERVAL, default=d.get(CONF_UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL)):
             _num(5, 60, 1, "s", "slider"),
         vol.Optional(CONF_OBSERVER, default=d.get(CONF_OBSERVER, DEFAULT_OBSERVER)):
@@ -178,6 +202,8 @@ def _cell_schema(flat: dict, *, with_id: bool, cell_id: str = "") -> vol.Schema:
         _mark("charge_mode_entity", f.get("charge_mode_entity")):
             selector.EntitySelector(selector.EntitySelectorConfig(domain="input_select")),
         vol.Optional("set_flag_on_charge", default=f.get("set_flag_on_charge", "")): selector.TextSelector(),
+        **({vol.Optional("surplus_tier_soc", default=f.get("surplus_tier_soc", 80)): _num(0, 100, 1, "%")}
+           if f.get("type") == "car_charger" else {}),
         vol.Optional("no_discharge_on_flag", default=f.get("no_discharge_on_flag", "")): selector.TextSelector(),
         # --- Actuator (how EBI drives this cell). Leave service blank to use the
         #     convention script.eb_actuator_<cell>. ---
@@ -289,7 +315,14 @@ class EBConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_cell(self, user_input=None) -> Any:
         if user_input is not None:
             cid = user_input.pop("id", None) or self._edit_id
-            self._cells[cid] = _form_to_cell(user_input)
+            new = _form_to_cell(user_input)
+            # The form only knows _ALGO_KEYS. Without this, saving a cell drops
+            # every other algo key — use_car_brain included, which would
+            # silently switch the car brain off.
+            old_algo = (self._cells.get(cid) or {}).get("algo", {})
+            new["algo"] = {**{k: v for k, v in old_algo.items()
+                              if k not in _ALGO_KEYS}, **new["algo"]}
+            self._cells[cid] = new
             return await self.async_step_cells()
         flat = (_flatten_cell(self._cells[self._edit_id]) if self._edit_id
                 else _detect_cell_flat(self.hass))
@@ -347,7 +380,14 @@ class EBOptionsFlow(config_entries.OptionsFlow):
     async def async_step_cell(self, user_input=None) -> Any:
         if user_input is not None:
             cid = user_input.pop("id", None) or self._edit_id
-            self._cells[cid] = _form_to_cell(user_input)
+            new = _form_to_cell(user_input)
+            # The form only knows _ALGO_KEYS. Without this, saving a cell drops
+            # every other algo key — use_car_brain included, which would
+            # silently switch the car brain off.
+            old_algo = (self._cells.get(cid) or {}).get("algo", {})
+            new["algo"] = {**{k: v for k, v in old_algo.items()
+                              if k not in _ALGO_KEYS}, **new["algo"]}
+            self._cells[cid] = new
             return await self.async_step_cells()
         flat = (_flatten_cell(self._cells[self._edit_id]) if self._edit_id
                 else _detect_cell_flat(self.hass))
