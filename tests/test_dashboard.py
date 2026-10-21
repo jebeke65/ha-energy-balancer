@@ -346,6 +346,23 @@ def test_flow_card_filters_colours_and_escapes_entity_ids():
     assert "semBuildPVStringsHTML" not in b
 
 
+def _schedule_card_src():
+    with open(os.path.join(PKG_DIR, "dashboard", "card", "src", "cards", "eb-schedule-card.js"),
+              encoding="utf-8") as fh:
+        return fh.read()
+
+
+def test_schedule_card_escapes_every_text_value():
+    """The timeline is set as one markup string: every value inside a
+    <title> or <text> goes through escSvg."""
+    import re
+    src = _schedule_card_src()
+    values = re.findall(r">(\$\{[^<]*?)</(?:title|text)>", src)
+    assert values, "timeline markup not found"
+    assert all(v.startswith("${escSvg(") for v in values), values
+    # rendering with hostile values is covered in dashboard/card/test (npm test)
+
+
 # --------------------------------------------------------------- naming
 def test_labels_read_as_words_but_the_chain_card_keeps_capitals():
     control = next(v for v in _views() if v.get("path") == "control")

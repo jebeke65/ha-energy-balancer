@@ -39,6 +39,16 @@ function parseTime(str) {
     return (h + min / 60) / 24;
 }
 
+/** Escape a value for SVG markup (attribute values reach the card from any sensor). */
+function escSvg(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
 /** Convert hourly boolean array to {start, end} fraction blocks. */
 function hoursToBlocks(hours) {
     if (!Array.isArray(hours)) return [];
@@ -143,7 +153,7 @@ class SEMScheduleCard extends SEMLitBase {
                     (s.tariff || s.type || 'HT').toUpperCase() === 'NT' ? 'cheap' : 'normal'
                 ),
                 type:  (s.tariff || s.type || 'HT').toUpperCase(),
-                avgPrice: s.avg_price,
+                avgPrice: s.avg_price == null ? null : Number(s.avg_price),
             }));
         }
         // v1.7.2-beta.3 (2026-06-07): the previous fallback baked a
@@ -328,7 +338,7 @@ class SEMScheduleCard extends SEMLitBase {
             const x = toX(h / 24);
             svg += `<text x="${x}" y="${LBL}" text-anchor="middle" fill="${textSecCol}"
                 font-size="10" font-family="'Segoe UI','Roboto',sans-serif"
-                font-variant-numeric="tabular-nums">${h.toString().padStart(2, '0')}</text>`;
+                font-variant-numeric="tabular-nums">${escSvg(h.toString().padStart(2, '0'))}</text>`;
         }
 
         // Row labels (left side) — translated at render time
@@ -336,7 +346,7 @@ class SEMScheduleCard extends SEMLitBase {
         rowLabels.forEach((label, i) => {
             const y = FRY + i * (RH + RG) + RH / 2 + 3.5;
             svg += `<text x="${ML - 4}" y="${y}" text-anchor="end" fill="${textTertCol}"
-                font-size="10" font-family="'Segoe UI','Roboto',sans-serif">${label}</text>`;
+                font-size="10" font-family="'Segoe UI','Roboto',sans-serif">${escSvg(label)}</text>`;
         });
 
         // Row backgrounds
@@ -378,22 +388,22 @@ class SEMScheduleCard extends SEMLitBase {
                 : '';
             const tip = isFallback
                 ? `${block.level} (no per-hour data — showing current level)`
-                : block.avgPrice != null
+                : Number.isFinite(block.avgPrice)
                     ? `${block.level} · avg ${block.avgPrice.toFixed(2)}`
                     : block.level;
             svg += `<rect x="${x}" y="${tariffY}" width="${w}" height="${RH}"
                 rx="3" fill="${c.fill}" opacity="${fillOpacity}"${strokeAttrs}>
-                <title>${tip}</title></rect>`;
+                <title>${escSvg(tip)}</title></rect>`;
             if (w > 30) {
                 // Prefer the dynamic level label (Cheap/Normal/Expensive) when
                 // the block was classified by level; fall back to NT/HT for
                 // legacy schedules.
                 const labelKey = block.level && TARIFF_LEVEL_LABEL_KEY[block.level]
                     ? TARIFF_LEVEL_LABEL_KEY[block.level]
-                    : block.type.toLowerCase();
+                    : String(block.type).toLowerCase();
                 svg += `<text x="${x + w / 2}" y="${tariffY + RH / 2 + 3.5}" text-anchor="middle"
                     fill="rgba(255,255,255,0.92)" font-size="9" font-weight="600"
-                    font-family="'Segoe UI','Roboto',sans-serif">${this._t(labelKey)}</text>`;
+                    font-family="'Segoe UI','Roboto',sans-serif">${escSvg(this._t(labelKey))}</text>`;
             }
         }
 
@@ -410,15 +420,15 @@ class SEMScheduleCard extends SEMLitBase {
                 // Wraps midnight: two segments
                 const x1 = toX(night.start);
                 svg += `<rect x="${x1}" y="${nightY}" width="${toX(1) - x1}"
-                    height="${RH}" rx="3" fill="#42a5f5" opacity="0.55"><title>${tip}</title></rect>`;
+                    height="${RH}" rx="3" fill="#42a5f5" opacity="0.55"><title>${escSvg(tip)}</title></rect>`;
                 svg += `<rect x="${toX(0)}" y="${nightY}"
                     width="${toX(night.end) - toX(0)}" height="${RH}"
-                    rx="3" fill="#42a5f5" opacity="0.55"><title>${tip}</title></rect>`;
+                    rx="3" fill="#42a5f5" opacity="0.55"><title>${escSvg(tip)}</title></rect>`;
             } else {
                 const x = toX(night.start);
                 const w = toX(night.end) - x;
                 svg += `<rect x="${x}" y="${nightY}" width="${w}" height="${RH}"
-                    rx="3" fill="#42a5f5" opacity="0.55"><title>${tip}</title></rect>`;
+                    rx="3" fill="#42a5f5" opacity="0.55"><title>${escSvg(tip)}</title></rect>`;
             }
         }
 
@@ -440,7 +450,7 @@ class SEMScheduleCard extends SEMLitBase {
                 const x = toX(h / 24);
                 const w = toX(1 / 24);
                 svg += `<rect x="${x}" y="${surplusY}" width="${w}" height="${RH}"
-                    fill="#fdd835" opacity="${(v * 0.55).toFixed(2)}"><title>${intTip}</title></rect>`;
+                    fill="#fdd835" opacity="${(v * 0.55).toFixed(2)}"><title>${escSvg(intTip)}</title></rect>`;
             }
         }
         const predicted = this._getPredictedSurplusWindow();
@@ -472,7 +482,7 @@ class SEMScheduleCard extends SEMLitBase {
                 svg += `<rect x="${x}" y="${evY}" width="${w}" height="${RH}"
                     rx="3" fill="${colors.ev}" opacity="0.30"
                     stroke="${colors.ev}" stroke-width="0.6" stroke-opacity="0.6"
-                    stroke-dasharray="3,2"><title>${tip}</title></rect>`;
+                    stroke-dasharray="3,2"><title>${escSvg(tip)}</title></rect>`;
             }
         }
         for (const block of this._getEvBlocks()) {
@@ -486,7 +496,7 @@ class SEMScheduleCard extends SEMLitBase {
             const dx = toX(evPlan.deadlineFrac);
             svg += `<line x1="${dx}" y1="${evY - 2}" x2="${dx}" y2="${evY + RH + 2}"
                 stroke="#f06292" stroke-width="1.2" stroke-dasharray="2,1" opacity="0.85">
-                <title>${this._t('plan_ev_deadline')}</title></line>`;
+                <title>${escSvg(this._t('plan_ev_deadline'))}</title></line>`;
         }
         if (this._isEvCharging()) {
             const now = new Date();

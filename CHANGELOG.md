@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.2.2
+
+### Security
+- The schedule card escapes every value it writes into its timeline markup: the tariff
+  level and type from `schedule_today` (tooltip and row label) and the kWh of the EV
+  plan (tooltip) are rendered as text, never parsed as markup.
+
+### Fixed
+- The schedule card no longer stops rendering when a tariff provider publishes
+  `avg_price` as a string.
+
+### Tests
+- `dashboard/card/test/schedule-card.test.mjs` (`npm test`) renders the built card with
+  markup in those attributes; a source guard in `tests/test_dashboard.py` keeps every
+  timeline text value behind the escape helper.
+
 ## 0.2.1
 
 ### Changed
