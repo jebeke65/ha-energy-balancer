@@ -3,15 +3,14 @@
 Portions derived from SEM (https://github.com/traktore-org/sem-community), MIT License, Copyright (c) 2025 belinea4071. See NOTICE.
 
 Two layers, exactly like SEM:
-  1. The HA Energy Dashboard (.storage/energy) is authoritative for
-     solar / grid / battery sensors.
+  1. The HA Energy Dashboard preferences (read through the energy integration's
+     own manager) are authoritative for solar / grid / battery sensors.
   2. Registry-walking + device_class/name heuristics fill the rest and find
      siblings on the same device (battery soc next to battery power, etc.).
 """
 
 from __future__ import annotations
 
-import json
 import logging
 
 from homeassistant.core import HomeAssistant
@@ -38,14 +37,24 @@ def _usable(hass, eid):
 
 
 # --------------------------------------------------------------------------- #
-# Energy Dashboard (.storage/energy) — authoritative source
+# Energy Dashboard preferences — authoritative source
 # --------------------------------------------------------------------------- #
-def _read_energy_file(path: str) -> dict:
+async def _energy_preferences(hass: HomeAssistant) -> dict:
+    """The Energy Dashboard preferences, as the energy integration holds them.
+
+    Read through the integration's manager, never from its storage file: that
+    file is private to the energy integration, its format may change between
+    releases, and Home Assistant holds the live copy in memory. Returns {} when
+    the energy integration is unavailable or nothing is configured yet.
+    """
     try:
-        with open(path, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except (OSError, ValueError):
+        from homeassistant.components.energy.data import async_get_manager
+
+        manager = await async_get_manager(hass)
+    except Exception as err:  # noqa: BLE001 — detection is best effort
+        _LOGGER.debug("Energy preferences unavailable: %s", err)
         return {}
+    return dict(manager.data or {})
 
 
 def derive_power_from_energy(hass, energy_eid: str, name_any=()) -> str | None:
@@ -77,9 +86,7 @@ async def read_energy_dashboard(hass: HomeAssistant) -> dict:
     Uses the configured power-rate sensor when present, otherwise DERIVES the
     power sensor from the energy sensor's device (SEM's key trick — most setups
     only register energy sensors in the dashboard, not power-rate sensors)."""
-    raw = await hass.async_add_executor_job(
-        _read_energy_file, hass.config.path(".storage", "energy"))
-    data = (raw or {}).get("data", {})
+    data = await _energy_preferences(hass)
     out: dict = {}
     for src in data.get("energy_sources", []):
         t = src.get("type")

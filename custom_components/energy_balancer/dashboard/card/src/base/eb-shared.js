@@ -212,35 +212,6 @@ export function semDiscoverPVStrings(hass, prefix) {
 }
 
 /**
- * Build a compact per-string chip strip rendered as a plain HTML
- * string (Lit ``html`` callers can drop it through ``unsafeHTML`` or
- * a direct ``innerHTML`` write).
- *
- * Returns ``''`` (empty string) when fewer than 2 strings are
- * available — callers can splice ``${semBuildPVStringsHTML(...)}``
- * straight into a Lit template and the row collapses naturally on
- * single-string installs.
- *
- * Why HTML-string and not Lit ``html`` literal here: ``eb-shared``
- * is the unscoped vanilla layer (eb-system-diagram-card et al. use
- * it without Lit). Returning a plain string keeps the helper
- * dependency-free.
- */
-export function semBuildPVStringsHTML(strings, theme) {
-    if (!strings || strings.length < 2) return '';
-    const T = theme || { text: '#fff', textSec: '#aaa' };
-    const chips = strings.map(s => {
-        const n = s.slot.replace(/^pv/, '');
-        const kW = (Math.abs(s.watts) / 1000).toFixed(2);
-        return `<div class="pv-chip" title="${s.entityId}" data-entity="${s.entityId}">
-            <span class="pv-chip-label">PV${n}</span>
-            <span class="pv-chip-value">${kW} kW</span>
-        </div>`;
-    }).join('');
-    return `<div class="pv-strings-row">${chips}</div>`;
-}
-
-/**
  * Shared CSS for the per-string chip strip. Cards import + inject
  * once. ``--eb-solar`` tints the value text; falls back to the
  * orange palette.

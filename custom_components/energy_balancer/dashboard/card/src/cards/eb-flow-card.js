@@ -371,7 +371,22 @@ class SEMFlowCard extends SEMLitBase {
             .replace(/&/g, '&amp;')
             .replace(/</g, '&lt;')
             .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;');
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    // ── Colour filter for config values that end up in SVG markup ──
+    // Accepts #hex, rgb()/rgba()/hsl()/hsla() with plain numbers, var(--name)
+    // with an optional #hex fallback, and bare colour names. Anything else is
+    // dropped, and the caller falls back to its default colour.
+    _safeColor(value) {
+        if (typeof value !== 'string') return null;
+        const v = value.trim();
+        const ok = /^#[0-9a-f]{3,8}$/i.test(v)
+            || /^(?:rgb|hsl)a?\(\s*[\d.%\s,/]+\)$/i.test(v)
+            || /^var\(--[\w-]+(?:\s*,\s*#[0-9a-f]{3,8})?\)$/i.test(v)
+            || /^[a-z]+$/i.test(v);
+        return ok ? v : null;
     }
 
     // ── Imperative flow update (called from updated()) ──
@@ -665,7 +680,7 @@ class SEMFlowCard extends SEMLitBase {
         devices.forEach(([id, info], idx) => {
             let name = (info.name || id);
             if (name.length > maxChars) name = name.substring(0, maxChars - 1) + '\u2026';
-            const color = info.color || SEM_DEVICE_COLORS[idx % SEM_DEVICE_COLORS.length];
+            const color = this._safeColor(info.color) || SEM_DEVICE_COLORS[idx % SEM_DEVICE_COLORS.length];
             const icon  = this._deviceIcon(info.device_type, info.name || id);
             const col   = idx % cols;
             const row   = Math.floor(idx / cols);
@@ -676,7 +691,7 @@ class SEMFlowCard extends SEMLitBase {
             svgHtml += `<path id="dev-conn-${idx}" d="M${H.cx},${H.cy + H.r} C${H.cx},${H.cy + H.r + 30} ${cx},${cy - 40} ${cx},${cy - nodeR}" fill="none" stroke="${color}" stroke-width="1.2" stroke-dasharray="3,5" opacity="0.1"/>`;
             svgHtml += `<g id="dev-flow-${idx}"></g>`;
             svgHtml += `<path id="dev-path-${idx}" d="M${H.cx},${H.cy + H.r} C${H.cx},${H.cy + H.r + 30} ${cx},${cy - 40} ${cx},${cy - nodeR}" fill="none" stroke="none"/>`;
-            const entityAttr = info.power_entity ? ` data-entity="${info.power_entity}"` : '';
+            const entityAttr = info.power_entity ? ` data-entity="${this._escSvg(info.power_entity)}"` : '';
             svgHtml += `<g id="dev-group-${idx}" class="device-clickable"${entityAttr} data-idx="${idx}">`;
             svgHtml += `<circle id="dev-circle-${idx}" cx="${cx}" cy="${cy}" r="${nodeR}" fill="rgba(128,128,128,0.03)" stroke="${color}" stroke-width="1.2" opacity="0.4"/>`;
             svgHtml += `<g transform="translate(${cx},${cy})" stroke="${color}" fill="none" opacity="0.35" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">${icon}</g>`;
@@ -703,7 +718,7 @@ class SEMFlowCard extends SEMLitBase {
             const powerEntity = info.power_entity ? this._hass.states[info.power_entity] : null;
             const power = powerEntity ? parseFloat(powerEntity.state) || 0 : (info.current_power || 0);
             const isOn  = power > 5;
-            const color = info.color || SEM_DEVICE_COLORS[idx % SEM_DEVICE_COLORS.length];
+            const color = this._safeColor(info.color) || SEM_DEVICE_COLORS[idx % SEM_DEVICE_COLORS.length];
             const pos   = this._devicePositions[idx];
             if (!pos) return;
 
@@ -1007,7 +1022,7 @@ class SEMFlowCard extends SEMLitBase {
             grid_export: e.grid?.color_export, home: e.home?.color,
             ev: e.ev?.color || e.individual?.[0]?.color,
         };
-        return overrides[node] || defaults[node] || '#888';
+        return this._safeColor(overrides[node]) || defaults[node] || '#888';
     }
 
     _getNodeName(node) {

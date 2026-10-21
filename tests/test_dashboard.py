@@ -317,6 +317,35 @@ def test_bundle_defines_the_strategy_and_keeps_the_notice():
     assert b.startswith("/*! Energy Balancer cards.") and "belinea4071" in b.splitlines()[0]
 
 
+def _chain_card():
+    with open(os.path.join(PKG_DIR, "dashboard", "card", "dist", "eb-chain-card-r2.js"), encoding="utf-8") as fh:
+        return fh.read()
+
+
+def test_chain_card_never_puts_values_into_markup():
+    """Every innerHTML write is either empty or a fixed skeleton without the
+    cell's name, its action or anything else from config or state."""
+    import re
+    src = _chain_card()
+    for m in re.finditer(r"\.innerHTML\s*=\s*(`[^`]*`|\"[^\"]*\")", src):
+        body = m.group(1)
+        if "svg" in src[max(0, m.start() - 40):m.start()]:
+            continue                      # sparkline: numbers and filtered colours only
+        assert "${" not in body, body[:80]
+    assert "ref.name.textContent" in src and "ref.action.textContent" in src
+
+
+def test_chain_card_colours_are_hex_only():
+    src = _chain_card()
+    assert "_hex(_c.consumption" in src and "_c.consumption ||" not in src
+
+
+def test_flow_card_filters_colours_and_escapes_entity_ids():
+    b = _bundle()
+    assert "_safeColor(" in b
+    assert "semBuildPVStringsHTML" not in b
+
+
 # --------------------------------------------------------------- naming
 def test_labels_read_as_words_but_the_chain_card_keeps_capitals():
     control = next(v for v in _views() if v.get("path") == "control")

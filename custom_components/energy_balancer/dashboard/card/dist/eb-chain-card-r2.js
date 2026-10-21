@@ -19,14 +19,18 @@ class EBChainCard extends HTMLElement {
 
     // --- Configurable colors by power sign + auto/manual border ---
     // consumption = positive power, production = negative, idle ≈ 0.
+    // Colours are hex only: they are converted with _hex2rgba and also written
+    // into the sparkline's SVG markup, so anything else falls back to the default.
     const _c = config.colors || {};
+    const _hex = (v, fallback) =>
+      (typeof v === "string" && /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i.test(v)) ? v : fallback;
     const COL = {
-      consumption: _c.consumption || "#ff9800",
-      production:  _c.production  || "#4caf50",
-      idle:        _c.idle        || "#888888",
-      offline:     _c.offline     || "#f44336",
-      autoBorder:  _c.auto_border   || null,
-      manualBorder: _c.manual_border || null,
+      consumption: _hex(_c.consumption, "#ff9800"),
+      production:  _hex(_c.production,  "#4caf50"),
+      idle:        _hex(_c.idle,        "#888888"),
+      offline:     _hex(_c.offline,     "#f44336"),
+      autoBorder:  _hex(_c.auto_border,   null),
+      manualBorder: _hex(_c.manual_border, null),
     };
     const POWER_TH = config.power_threshold != null ? config.power_threshold : 50;
     const BG_OP = config.background_opacity != null ? config.background_opacity : 0.16;
@@ -122,8 +126,8 @@ class EBChainCard extends HTMLElement {
           box.innerHTML = `
             <div style="display:flex;align-items:center;gap:8px">
               <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:1px">
-                <div><span class="eb-name" style="color:#fff;font-weight:bold;font-size:14px"></span></div>
-                <div class="eb-action" style="font-size:12px"></div>
+                <div><span class="eb-name" style="color:#fff;font-weight:bold;font-size:14px"></span><span class="eb-target" style="color:#888;font-size:11px;font-weight:normal"></span></div>
+                <div style="font-size:12px"><span class="eb-action"></span><span class="eb-take" style="color:#888;font-size:11px"></span></div>
                 <div class="eb-meas" style="color:#fff;font-size:16px;font-weight:bold"></div>
                 <div class="eb-reason" style="color:#888;font-size:9px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis"></div>
               </div>
@@ -152,7 +156,9 @@ class EBChainCard extends HTMLElement {
           this._refs[id] = {
             box,
             name: box.querySelector(".eb-name"),
+            target: box.querySelector(".eb-target"),
             action: box.querySelector(".eb-action"),
+            take: box.querySelector(".eb-take"),
             meas,
             reason: box.querySelector(".eb-reason"),
             spark,
@@ -229,9 +235,7 @@ class EBChainCard extends HTMLElement {
       const showTake = Number.isFinite(takeRaw)
         && String(a.control || "") === "eb"          // EB is actually steering
         && !this._tierMembers.has(id);               // ...and it is not a tier member
-      const takeStr = showTake
-        ? ` <span style="color:#888;font-size:11px">(Ratio: ${Math.round(takeRaw)}%)</span>`
-        : "";
+      const takeStr = showTake ? ` (Ratio: ${Math.round(takeRaw)}%)` : "";
       const socStr = a.soc != null ? ` ${Math.round(a.soc)}%` : "";
       const targetStr = a.target_soc != null ? ` (t:${Math.round(a.target_soc)}%)` : "";
       const reason = a.reason || "";
@@ -244,8 +248,13 @@ class EBChainCard extends HTMLElement {
         (auto === true && COL.autoBorder) ? COL.autoBorder
         : (auto === false && COL.manualBorder) ? COL.manualBorder
         : color;
-      ref.name.innerHTML = `${name}${socStr}<span style="color:#888;font-size:11px;font-weight:normal">${targetStr}</span>`;
-      ref.action.innerHTML = `<span style="color:${color}">${action}</span>${takeStr}`;
+      // Text only: the name comes from the card config and the action from an
+      // entity attribute, so neither may ever be parsed as markup.
+      ref.name.textContent = `${name}${socStr}`;
+      ref.target.textContent = targetStr;
+      ref.action.textContent = action;
+      ref.action.style.color = color;
+      ref.take.textContent = takeStr;
       ref.meas.textContent = `${meas}W`;
       ref.meas.style.color = color;
       ref.reason.textContent = reason;

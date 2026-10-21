@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.2.1
+
+### Changed
+- Sensor auto-detection reads the Energy Dashboard preferences through the energy
+  integration's own manager (`homeassistant.components.energy.data`) instead of opening
+  its storage file. `energy` is now listed in `after_dependencies`.
+
+### Security
+- The chain card sets the cell name, SoC, target, action and ratio with `textContent`;
+  no value from the card configuration or from an entity is parsed as markup any more.
+  Its colours accept hex values only.
+- The flow card only accepts real colour values (`#hex`, `rgb()`/`hsl()`, `var(--…)`,
+  colour names) from its configuration and escapes entity ids before they go into its
+  SVG markup.
+- Removed an unused helper that built HTML from entity ids.
+
 ## 0.2.0
 
 ### Added
