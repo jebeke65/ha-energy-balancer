@@ -12,6 +12,7 @@
 import { LitElement, html, css, svg, nothing } from 'lit';
 import { semTheme } from './eb-shared.js';
 
+import { withLegacyIds } from './eb-legacy-ids.js';
 export { html, css, svg, nothing };
 
 export class SEMLitBase extends LitElement {
@@ -32,6 +33,7 @@ export class SEMLitBase extends LitElement {
     // ── hass setter with entity-reference shouldUpdate ──
     set hass(hass) {
         const old = this._hass;
+        hass = withLegacyIds(hass);
         this._hass = hass;
 
         // Locale change detection

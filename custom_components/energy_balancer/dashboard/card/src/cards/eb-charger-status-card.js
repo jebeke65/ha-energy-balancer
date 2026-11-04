@@ -12,6 +12,7 @@
 
 import { SEMLitBase, html, css, nothing } from '../base/eb-lit-base.js';
 import { semDefineCard } from '../base/eb-shared.js';
+import { withLegacyIds } from '../base/eb-legacy-ids.js';
 
 const DEFAULT_PREFIX = 'sensor.ebi_';
 
@@ -28,6 +29,7 @@ class SEMChargerStatusCard extends SEMLitBase {
      * only when relevant charger states actually change.
      */
     set hass(hass) {
+        hass = withLegacyIds(hass);
         const old = this._hass;
         this._hass = hass;
 

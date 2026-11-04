@@ -155,3 +155,19 @@ def test_layers_full_battery_avail_tapers_to_zero():
     b = layers_of(full_chain(gw={"soc": 50, "target": 50},
                              mk={"soc": 95, "target": 50}))["home_battery"]
     assert b["charge_avail_w"] == 5000          # only goodwe contributes
+
+
+# ------------------------------------------------------- layer energy meters
+from core import sum_meters  # noqa: E402
+
+
+def test_layer_meter_sums_its_members():
+    assert sum_meters([2773.3, 2415.2]) == 5188.5
+
+
+def test_layer_meter_is_unknown_while_a_member_is_unreadable():
+    """At a restart one member is still unavailable: publish nothing, never 0 or
+    a partial total, or Home Assistant books a meter reset (2026-11-04)."""
+    assert sum_meters([None, 2415.2]) is None
+    assert sum_meters([None, None]) is None
+    assert sum_meters([]) is None

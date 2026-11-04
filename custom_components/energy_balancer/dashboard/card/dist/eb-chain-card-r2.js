@@ -113,7 +113,7 @@ class EBChainCard extends HTMLElement {
           tag.textContent = "TIER";
           tag.style.cssText = "position:absolute;top:-7px;left:10px;background:#1c1c1c;color:#888;font-size:9px;padding:0 4px;letter-spacing:1px";
           rowEl.appendChild(tag);
-          this._tierTags.push({ tag, layer: `${prefix}layer_${row.map(x => x.id).join("_")}` });
+          this._tierTags.push({ tag, layer: row[0].layer || `${prefix}layer_${row.map(x => x.id).join("_")}` });
           for (const x of row) this._tierMembers.add(x.id);
         }
         wrap.appendChild(rowEl);
@@ -145,7 +145,7 @@ class EBChainCard extends HTMLElement {
           const fireMoreInfo = () => {
             const entityId = this._refs[id] && this._refs[id].sourceSensor
               ? this._refs[id].sourceSensor
-              : `${prefix}${id}`;
+              : (row[c].entity || `${prefix}${id}`);
             this.dispatchEvent(new CustomEvent("hass-more-info", {
               bubbles: true, composed: true, detail: { entityId }
             }));
@@ -214,7 +214,7 @@ class EBChainCard extends HTMLElement {
       const cell = flat[i];
       const id = cell.id;
       const name = cell.name || id.toUpperCase();
-      const entity = hass.states[`${prefix}${id}`];
+      const entity = hass.states[cell.entity || `${prefix}${id}`];
       const ref = this._refs[id];
       if (!entity || !ref) continue;
 
@@ -222,9 +222,16 @@ class EBChainCard extends HTMLElement {
       const action = a.action || "?";
       const meas = Math.round(a.measured_w || 0);
       const color = _signColor(meas, action);
-      const ro = Math.round(a.rest_out_w || 0);
-      const hd = Math.round(a.headroom_w || 0);
-      const fcOut = Math.round((a.forecast_out_wh || 0) / 10) / 100;
+      // What the cell hands on and the headroom it gets from the next block are
+      // sensors of their own (rest_out / forecast_out / headroom_out); the
+      // generator names them.
+      const num = (eid, attr) => {
+        const v = eid ? parseFloat(hass.states[eid]?.state) : parseFloat(a[attr]);
+        return Number.isFinite(v) ? v : 0;
+      };
+      const ro = Math.round(num(cell.rest_out, "rest_out_w"));
+      const hd = Math.round(num(cell.headroom, "headroom_w"));
+      const fcOut = Math.round(num(cell.forecast_out, "forecast_out_wh") / 10) / 100;
       // take_pct is the cap EB applies WHEN IT STEERS. So show it only while EB is
       // actually steering (control === "eb"). Next to `autonomous` the cell runs on
       // its own regulator and ignores the slider entirely — printing "100%" there
@@ -317,7 +324,7 @@ class EBChainCard extends HTMLElement {
 
     for (const cell of cells) {
       // Use the source_sensor attribute (has real history) instead of eb_ sensor
-      const ebEntity = hass.states[`${prefix}${cell.id}`];
+      const ebEntity = hass.states[cell.entity || `${prefix}${cell.id}`];
       const sourceSensor = ebEntity && ebEntity.attributes.source_sensor;
       if (!sourceSensor) continue;
 

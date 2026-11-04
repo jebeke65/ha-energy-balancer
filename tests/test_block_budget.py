@@ -108,18 +108,20 @@ def test_sustained_draw_empties_the_bucket():
 
 
 # ------------------------------------------------------- passing it down the chain
-# The budget is passed through three layers: compute -> process_tier ->
-# _pool_controller. On 2026-08-31 compute() was the only one that did NOT get
-# the parameter, and no test noticed: they all call compute() without a budget,
-# so the signature was never exercised with that argument. Live, every tick
-# crashed on a TypeError and the whole dashboard was empty.
-# These tests DO call compute() with the budget, so the chain stays intact.
+# The grid cell owns the block inputs (ceiling, block so far, seconds left) and
+# hands them back up the chain; the tier turns them into its budget. With an
+# empty block, a full quarter left and nothing else on the meter, the budget is
+# exactly the ceiling — so `_chain(budget)` gives the tier a budget of `budget`.
+# (Until 2026-11-03 the budget was a separate compute() argument; on 2026-08-31
+# that side door was missing from compute() and every tick crashed.)
 
 from core import CellConfig, CellState, compute          # noqa: E402
 from intake import ChargeIntent, WANT_CHARGE             # noqa: E402
 
 
-def _chain():
+def _chain(budget=None):
+    net = (dict(peak_limit_w=3500) if budget is None else
+           dict(peak_limit_w=budget, block_now_w=0.0, block_remaining_s=900.0))
     return [
         (CellConfig(id="solar", position=0, mode="supply"), CellState(measured_w=6000)),
         (CellConfig(id="house", position=1, mode="demand"), CellState(measured_w=1000)),
@@ -129,7 +131,7 @@ def _chain():
         (CellConfig(id="marstek", position=4, mode="balanced", max_charge_w=2500,
                     max_discharge_w=2500, capacity_kwh=5.12, min_soc=10, max_soc=95,
                     has_soc=True, target_soc=50), CellState(soc=40)),
-        (CellConfig(id="net", position=5, mode="grid", peak_limit_w=3500),
+        (CellConfig(id="net", position=5, mode="grid", **net),
          CellState(measured_w=0)),
     ]
 
@@ -137,15 +139,49 @@ def _chain():
 CHARGE_FULL = ChargeIntent(WANT_CHARGE, 100.0, "test")
 
 
-def test_compute_accepts_the_budget():
-    """compute()'s signature carries the budget — otherwise every tick crashes."""
-    r = compute(_chain(), intent=CHARGE_FULL, block_budget_w=1500.0)
-    assert r is not None
+def test_the_budget_reaches_the_tier_from_the_grid_cell():
+    r = compute(_chain(1500.0), intent=CHARGE_FULL)
+    assert r.details["goodwe"]["block_budget_w"] == 1500.0
+    assert r.details["net"]["block_now_w"] == 0.0
+
+
+def test_no_block_inputs_means_no_budget():
+    r = compute(_chain(), intent=CHARGE_FULL)
+    assert "block_budget_w" not in r.details["goodwe"]
+    tot = sum(r.outputs[c].power_w for c in ("goodwe", "marstek"))
+    assert abs(tot - 7500.0) <= 2, tot
+
+
+def test_the_grid_cell_publishes_the_allowed_import():
+    """The grid cell works out what the quarter still allows; the tier only
+    subtracts the rest of the house (Jan, 2026-11-04)."""
+    r = compute(_chain(1500.0), intent=CHARGE_FULL)
+    assert r.details["net"]["allowed_import_w"] == 1500.0
+    assert "allowed_import_w" not in compute(_chain(), intent=CHARGE_FULL).details["net"]
+
+
+def test_the_tier_chain_values_sit_on_the_layer():
+    """The grid cell's input is the tier's output, not one battery's."""
+    from core import build_layers
+    cells = _chain(1500.0)
+    r = compute(cells, intent=CHARGE_FULL)
+    layer = next(l for l in build_layers(cells, r.outputs, r.details)
+                 if l["id"] == "home_battery")
+    assert layer["rest_out_w"] == r.details["goodwe"]["rest_out_w"]
+    assert layer["rest_out_w"] == r.details["net"]["rest_in_w"]
+    assert layer["block_budget_w"] == 1500.0
+
+
+def test_compute_has_no_side_door_for_grid_data():
+    """Grid data enters through the grid cell only (Jan, 2026-11-03)."""
+    import inspect
+    params = inspect.signature(compute).parameters
+    assert "grid_w" not in params and "block_budget_w" not in params
 
 
 def test_budget_throttles_the_tier():
     without = compute(_chain(), intent=CHARGE_FULL)
-    with_budget = compute(_chain(), intent=CHARGE_FULL, block_budget_w=1500.0)
+    with_budget = compute(_chain(1500.0), intent=CHARGE_FULL)
     total_without = sum(without.outputs[c].power_w for c in ("goodwe", "marstek"))
     total_with = sum(with_budget.outputs[c].power_w for c in ("goodwe", "marstek"))
     assert abs(total_without - 7500.0) <= 2, total_without   # 100% of pool capacity
@@ -153,21 +189,42 @@ def test_budget_throttles_the_tier():
 
 
 def test_zero_budget_stops_charging():
-    r = compute(_chain(), intent=CHARGE_FULL, block_budget_w=0.0)
+    r = compute(_chain(0.0), intent=CHARGE_FULL)
     for c in ("goodwe", "marstek"):
         assert r.outputs[c].power_w == 0.0, (c, r.outputs[c])
 
 
 def test_ample_budget_leaves_the_base_alone():
-    r = compute(_chain(), intent=CHARGE_FULL, block_budget_w=99000.0)
+    r = compute(_chain(99000.0), intent=CHARGE_FULL)
     tot = sum(r.outputs[c].power_w for c in ("goodwe", "marstek"))
     assert abs(tot - 7500.0) <= 2, tot
 
 
 def test_the_split_stays_right_after_throttling():
     """Throttling must not disturb the ratio between the two batteries."""
-    r = compute(_chain(), intent=CHARGE_FULL, block_budget_w=2000.0)
+    r = compute(_chain(2000.0), intent=CHARGE_FULL)
     g = r.outputs["goodwe"].power_w
     m = r.outputs["marstek"].power_w
     assert abs(g + m - 2000.0) <= 2
     assert abs(g / m - 15 / 5.12) < 0.05
+
+
+def test_a_single_cell_layer_carries_what_it_hands_on():
+    from core import build_layers
+    cells = _chain(1500.0)
+    r = compute(cells, intent=CHARGE_FULL)
+    house = next(l for l in build_layers(cells, r.outputs, r.details) if l["id"] == "house")
+    assert house["rest_out_w"] == r.details["house"]["rest_out_w"]
+    assert house["forecast_out_wh"] == r.details["house"]["forecast_out_wh"]
+
+
+def test_the_car_gets_its_headroom_from_the_tier():
+    """Upstream, every block reads the headroom the block after it hands on;
+    the grid ceiling reaches the car via the tier, not straight from the grid."""
+    from core import build_layers
+    cells = _chain(1500.0)
+    r = compute(cells, intent=CHARGE_FULL)
+    layers = {l["id"]: l for l in build_layers(cells, r.outputs, r.details)}
+    assert layers["home_battery"]["headroom_out_w"] == r.details["house"]["headroom_w"]
+    assert layers["home_battery"]["headroom_out_w"] == r.details["net"]["peak_limit_w"]
+    assert "headroom_out_w" in layers["house"]

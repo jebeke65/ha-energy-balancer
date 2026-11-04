@@ -69,8 +69,8 @@ def _hass():
     h = Hass()
     for eid in ("sensor.pv_w", "sensor.home_w", "sensor.meter_w", "sensor.pv_left_kwh",
                 "binary_sensor.ev_plugged", "binary_sensor.ev_charging",
-                "sensor.eb_ev", "number.eb_ev_take", "number.eb_batt_a_take",
-                "sensor.eb_layer_ev", "sensor.eb_layer_home_battery", "sensor.eb_layer_net"):
+                "sensor.eb_ev_cell", "number.eb_ev_take", "number.eb_homebattery_batta_take",
+                "sensor.eb_ev_layer", "sensor.eb_homebattery_layer", "sensor.eb_net_layer"):
         h.states.set(eid, "0")
     return h
 
@@ -114,7 +114,7 @@ def test_car_entities_come_from_the_car_cell():
     ev = next(v for v in _views() if v.get("path") == "ev")
     ents = [e["entity"] for c in _cards([ev]) if c.get("type") == "entities" for e in c["entities"]]
     assert "binary_sensor.ev_plugged" in ents and "binary_sensor.ev_charging" in ents
-    assert "sensor.eb_ev" in ents and "number.eb_ev_take" in ents
+    assert "sensor.eb_ev_cell" in ents and "number.eb_ev_take" in ents
 
 
 def test_no_car_cell_no_ev_view():
@@ -125,14 +125,14 @@ def test_no_car_cell_no_ev_view():
 def test_take_sliders_only_for_entities_that_exist():
     control = next(v for v in _views() if v.get("path") == "control")
     sliders = next(c for c in _cards([control]) if c.get("title") == "Control — take %")
-    assert [e["entity"] for e in sliders["entities"]] == ["number.eb_ev_take", "number.eb_batt_a_take"]
+    assert [e["entity"] for e in sliders["entities"]] == ["number.eb_ev_take", "number.eb_homebattery_batta_take"]
 
 
 def test_pool_chart_series_uses_the_published_layer_id():
     series = dash._chart_series(_coordinator())
     ids = [s["entity"] for s in series]
-    assert "sensor.eb_layer_home_battery" in ids
-    assert "sensor.eb_layer_batt_a_batt_b" not in ids
+    assert "sensor.eb_homebattery_layer" in ids
+    assert "sensor.eb_battabattb_layer" not in ids
 
 
 def test_system_sensors_are_the_configured_ones():
@@ -372,3 +372,37 @@ def test_labels_read_as_words_but_the_chain_card_keeps_capitals():
     assert chain[0]["name"] == "SOLAR" and chain[1]["name"] == "HOME"
     assert chain[-1]["name"] == "NET"
     assert [c["name"] for c in chain[3]] == ["BATT A", "BATT B"]
+
+
+def test_chain_cells_name_what_each_block_hands_on():
+    """Rest and forecast are sensors of their own; a tier's are its layer's."""
+    cells = dash._chain_cells(_coordinator())
+    flat = [c for row in cells for c in (row if isinstance(row, list) else [row])]
+    by = {c["id"]: c for c in flat}
+    assert by["solar"]["rest_out"] == "sensor.eb_solar_rest_out"
+    assert by["ev"]["forecast_out"] == "sensor.eb_ev_forecast_out"
+    assert by["batt_a"]["rest_out"] == "sensor.eb_homebattery_rest_out"
+    assert "rest_out" not in by["net"]
+    # Headroom comes from the next block, never straight from the grid cell.
+    assert by["solar"]["headroom"] == "sensor.eb_house_headroom_out"
+    assert by["ev"]["headroom"] == "sensor.eb_homebattery_headroom_out"
+    assert by["batt_a"]["headroom"] == "sensor.eb_net_peak_limit"
+    assert "headroom" not in by["net"]
+
+
+def test_markdown_rows_never_build_ids_from_cell_ids():
+    rows = dash._cell_rows(_coordinator(), ["solar", "batt_a", "net"])
+    assert rows == [("solar", "sensor.eb_solar_cell", "sensor.eb_solar_rest_out"),
+                    ("batt_a", "sensor.eb_homebattery_batta_cell", "sensor.eb_homebattery_rest_out"),
+                    ("net", "sensor.eb_net_cell", "")]
+
+
+def test_cell_attributes_do_not_repeat_the_ceiling_sensor():
+    """The ceiling is sensor.eb_net_peak_limit; the net cell does not also carry
+    it as an attribute (Jan, 2026-11-04: a value with its own sensor is not an
+    attribute too)."""
+    import re
+    with open(os.path.join(PKG_DIR, "sensor.py"), encoding="utf-8") as fh:
+        src = fh.read()
+    block = re.search(r'for k in \(([^)]*)\)\s*\n\s*if k in detail', src)
+    assert block and "peak_limit_w" not in block.group(1)

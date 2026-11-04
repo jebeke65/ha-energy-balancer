@@ -32,6 +32,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 
 from .const import ENTITY_PREFIX
+from .naming import cell_prefix, entity_id, slug
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -66,7 +67,7 @@ def _steerable(coordinator) -> list:
 # ------------------------------------------------------------------ layers
 def _layer_groups(coordinator) -> list:
     """(layer id, member ids, kind) in chain order — the same ids build_layers
-    publishes as sensor.eb_layer_<id>.
+    publishes as sensor.eb_<id>_layer (naming.py).
 
     Cells at the same position and of the same type form one layer. A layer of
     several cells of which at least one has a SoC is a storage pool, with the
@@ -98,7 +99,25 @@ def _layer_groups(coordinator) -> list:
 def _chain_cells(coordinator) -> list:
     """Chain-card cells: solar, house, <steerable pooled by position>, net."""
     steer = _steerable(coordinator)
-    cells = [{"id": "solar", "name": _chain_name("solar")}, {"id": "house", "name": _chain_name("house")}]
+    # Each cell carries its own entities (naming.py), so the card never builds
+    # an id from the cell id: the cell sensor, what it hands on (rest_out /
+    # forecast_out, a tier's being the layer's) and the headroom it gets from
+    # the next block (that block's headroom_out; the grid cell's ceiling).
+    # A tier also carries its layer.
+    layer_of = {m: lid for lid, ids, _kind in _layer_groups(coordinator) for m in ids}
+    peak = entity_id("sensor", "net", "peak_limit")
+
+    def cell(cid, block_prefix=None):
+        p = block_prefix or cell_prefix(coordinator, cid)
+        out = {"id": cid, "name": _chain_name(cid),
+               "entity": entity_id("sensor", cell_prefix(coordinator, cid), "cell")}
+        if cid != "net":
+            out["rest_out"] = entity_id("sensor", p, "rest_out")
+            out["forecast_out"] = entity_id("sensor", p, "forecast_out")
+            out["headroom_out"] = entity_id("sensor", p, "headroom_out")
+        return out
+
+    cells = [cell("solar"), cell("house")]
     i = 0
     while i < len(steer):
         j = i + 1
@@ -106,18 +125,28 @@ def _chain_cells(coordinator) -> list:
             j += 1
         group = steer[i:j]
         if len(group) > 1:
-            cells.append([{"id": c.id, "name": _chain_name(c.id)} for c in group])
+            lp = slug(layer_of.get(group[0].id, group[0].id))
+            layer = entity_id("sensor", lp, "layer")
+            cells.append([{**cell(c.id, lp), "layer": layer} for c in group])
         else:
-            cells.append({"id": group[0].id, "name": _chain_name(group[0].id)})
+            cells.append(cell(group[0].id))
         i = j
-    cells.append({"id": "net", "name": _chain_name("net")})
+    cells.append(cell("net"))
+
+    def first(row):
+        return row[0] if isinstance(row, list) else row
+
+    for row, nxt in zip(cells, cells[1:]):
+        hd = first(nxt).get("headroom_out", peak)
+        for c in (row if isinstance(row, list) else [row]):
+            c["headroom"] = hd
     return cells
 
 
 def _chart_series(coordinator) -> list:
     """One chart series per layer, using the layer sensors (measured, pooled)."""
     return [{
-        "entity": f"sensor.{ENTITY_PREFIX}_layer_{lid}",
+        "entity": entity_id("sensor", slug(lid), "layer"),
         "name": "+".join(_name(i) for i in ids),
         "color": _KIND_COLOR.get(kind, "#42A5F5"),
         "type": "area",
@@ -126,7 +155,7 @@ def _chart_series(coordinator) -> list:
 
 def _config_pools(coordinator) -> list:
     """Storage pools for the config card. The pool-level SoC targets live on
-    number.eb_<pool>_*_min_soc."""
+    number.eb_<pool>_*_min_soc (naming.py)."""
     return [{"id": lid, "members": ids}
             for lid, ids, _kind in _layer_groups(coordinator)
             if lid.startswith("home_battery")]
@@ -162,11 +191,12 @@ def _car_entities(hass: HomeAssistant, coordinator) -> list:
     rows = []
     for c in _car_cells(coordinator):
         io = coordinator.cell_io.get(c.id, {})
+        p = cell_prefix(coordinator, c.id)
         candidates = [
-            (f"sensor.{ENTITY_PREFIX}_{c.id}", f"{_name(c.id)} (EB power)"),
-            (f"sensor.{ENTITY_PREFIX}_ev_power", "Charging power"),
-            (f"number.{ENTITY_PREFIX}_{c.id}_take", "Take %"),
-            (f"select.{ENTITY_PREFIX}_{c.id}_mode", "Charge mode (EB)"),
+            (entity_id("sensor", p, "cell"), f"{_name(c.id)} (EB power)"),
+            (entity_id("sensor", slug(c.id), "layer"), "Charging power"),
+            (entity_id("number", p, "take"), "Take %"),
+            (entity_id("select", p, "mode"), "Charge mode (EB)"),
             (io.get("connected_sensor"), "Connected"),
             (io.get("charging_sensor"), "Charging"),
             (io.get("charge_mode_entity"), "Charge mode"),
@@ -182,7 +212,7 @@ def _car_entities(hass: HomeAssistant, coordinator) -> list:
 def _car_series(coordinator) -> list:
     car_ids = {c.id for c in _car_cells(coordinator)}
     return [{
-        "entity": f"sensor.{ENTITY_PREFIX}_layer_{lid}",
+        "entity": entity_id("sensor", slug(lid), "layer"),
         "name": "+".join(_name(i) for i in ids),
         "color": _KIND_COLOR["car_charger"],
         "type": "area",
@@ -190,9 +220,10 @@ def _car_series(coordinator) -> list:
 
 
 def _take_sliders(hass: HomeAssistant, coordinator) -> list:
-    return [{"entity": f"number.{ENTITY_PREFIX}_{c.id}_take", "name": f"{_name(c.id)} %"}
-            for c in _steerable(coordinator)
-            if _exists(hass, f"number.{ENTITY_PREFIX}_{c.id}_take")]
+    takes = [(entity_id("number", cell_prefix(coordinator, c.id), "take"), c.id)
+             for c in _steerable(coordinator)]
+    return [{"entity": e, "name": f"{_name(cid)} %"}
+            for e, cid in takes if _exists(hass, e)]
 
 
 def _system_sensors(hass: HomeAssistant, coordinator) -> list:
@@ -206,14 +237,30 @@ def _system_sensors(hass: HomeAssistant, coordinator) -> list:
 
 
 def _layer_entities(hass: HomeAssistant) -> list:
-    prefix = f"sensor.{ENTITY_PREFIX}_layer_"
-    return sorted(e for e in hass.states.async_entity_ids("sensor") if e.startswith(prefix))
+    prefix = f"sensor.{ENTITY_PREFIX}_"
+    return sorted(e for e in hass.states.async_entity_ids("sensor")
+                  if e.startswith(prefix) and e.endswith("_layer"))
 
 
-def _cell_loop_markdown(cell_ids: list, line: str) -> str:
-    ids = ", ".join(f"'{c}'" for c in cell_ids)
-    return (f"{{% for c in [{ids}] -%}}\n"
-            f"{{% set e = 'sensor.{ENTITY_PREFIX}_' ~ c -%}}\n"
+def _cell_rows(coordinator, cell_ids: list) -> list:
+    """(label, cell entity, rest_out entity) per cell; a tier member's rest_out
+    is its layer's, the grid cell hands nothing on."""
+    layer_of = {m: lid for lid, ids, _kind in _layer_groups(coordinator)
+                if len(ids) > 1 for m in ids}
+    rows = []
+    for c in cell_ids:
+        p = cell_prefix(coordinator, c)
+        rest = "" if c == "net" else entity_id(
+            "sensor", slug(layer_of[c]) if c in layer_of else p, "rest_out")
+        rows.append((c, entity_id("sensor", p, "cell"), rest))
+    return rows
+
+
+def _cell_loop_markdown(rows: list, line: str) -> str:
+    """rows: (label, cell entity, rest_out entity or '') — full ids, never built
+    from a cell id inside the template (naming.py decides the names)."""
+    items = ", ".join(f"('{c}', '{e}', '{r}')" for c, e, r in rows)
+    return (f"{{% for c, e, r in [{items}] -%}}\n"
             f"{line}\n"
             "{% endfor -%}\n")
 
@@ -222,8 +269,8 @@ _ACTUATOR_LINE = ("- **{{ c }}**: {{ state_attr(e,'actuator_action') }} → "
                   "{{ state_attr(e,'actuator_setpoint') }}{{ state_attr(e,'actuator_unit') }} "
                   "(sent: {{ state_attr(e,'actuator_sent') }})")
 _DIAG_LINE = ("- **{{ c }}**: {{ state_attr(e,'action') }} · {{ states(e) }} W · "
-              "rest in {{ state_attr(e,'rest_in_w') }} / out {{ state_attr(e,'rest_out_w') }} · "
-              "headroom {{ state_attr(e,'headroom_w') }} — _{{ state_attr(e,'reason') }}_")
+              "rest out {{ states(r) if r else '–' }} · "
+              "peak {{ states('sensor.eb_net_peak_limit') }} — _{{ state_attr(e,'reason') }}_")
 
 
 def _fill_placeholders(hass: HomeAssistant, views: list, coordinator) -> None:
@@ -236,9 +283,10 @@ def _fill_placeholders(hass: HomeAssistant, views: list, coordinator) -> None:
         "system_sensors": lambda card: card.__setitem__("entities", _system_sensors(hass, coordinator)),
         "layers": lambda card: card.__setitem__("entities", _layer_entities(hass)),
         "actuator_markdown": lambda card: card.__setitem__(
-            "content", _cell_loop_markdown(steer_ids, _ACTUATOR_LINE)),
+            "content", _cell_loop_markdown(_cell_rows(coordinator, steer_ids), _ACTUATOR_LINE)),
         "diagnostics_markdown": lambda card: card.__setitem__(
-            "content", _cell_loop_markdown(["solar", "house", *steer_ids, "net"], _DIAG_LINE)),
+            "content", _cell_loop_markdown(
+                _cell_rows(coordinator, ["solar", "house", *steer_ids, "net"]), _DIAG_LINE)),
     }
 
     def fill(card):

@@ -14,6 +14,7 @@ import {
     semTheme, semFormatPower, semCardSurfaceCSS, SEM_COLORS, semDefineCard,
     semDiscoverPVStrings, semPVStringsCSS,
 } from '../base/eb-shared.js';
+import { withLegacyIds } from '../base/eb-legacy-ids.js';
 
 const DEFAULT_PREFIX = 'sensor.ebi_';
 
@@ -70,6 +71,7 @@ class SEMSolarCard extends SEMLitBase {
 
     // ── Override hass setter for dynamic prefix entity tracking ──
     set hass(hass) {
+        hass = withLegacyIds(hass);
         this._hass = hass;
 
         const lang = hass?.language;

@@ -48,7 +48,7 @@ const CELL_PARAMS = [
 ];
 
 // Per-pool tunable number entities: number.<objPrefix><pool>_<suffix>
-// (e.g. number.eb_home_battery_no_sun_min_soc).
+// (e.g. number.eb_homebattery_no_sun_min_soc).
 const POOL_PARAMS = [
     { suffix: 'sunny_min_soc',  labelKey: 'sunny_min_soc',  helpKey: 'config_help_sunny_min_soc' },
     { suffix: 'no_sun_min_soc', labelKey: 'no_sun_min_soc', helpKey: 'config_help_no_sun_min_soc' },

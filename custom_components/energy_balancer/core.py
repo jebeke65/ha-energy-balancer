@@ -29,6 +29,7 @@ Sign convention:
   grid: + = import, − = export
 """
 
+from calendar import monthrange
 from dataclasses import dataclass
 from typing import Optional
 
@@ -146,7 +147,20 @@ class CellConfig:
     charge_floor_w: float = 0.0
     hysteresis: float = 3.0
     target_soc: Optional[float] = None
-    peak_limit_w: Optional[float] = None  # only for grid cell
+    # Only for the grid cell. It turns these raw inputs into the ceiling
+    # (grid_ceiling_w) and the import still allowed this quarter
+    # (allowed_import_w); nothing else in the chain recomputes either.
+    peak_limit_w: Optional[float] = None  # month start reference (configured)
+    # Measured peaks as (value, is_month_peak); the month peak gets the
+    # rollover policy while month_rollover is true.
+    peak_readings_w: tuple = ()
+    peak_max_w: float = 0.0               # the user's max knob, only raises
+    month_start_peak_policy: str = "previous"
+    month_rollover: bool = False
+    # The running 15-minute block as it stands now and the seconds left in it.
+    # None = no block sensor configured.
+    block_now_w: Optional[float] = None
+    block_remaining_s: Optional[float] = None
     self_consumption_w: float = 0.0       # cell's own power draw
 
     # Balanced mode target calculation inputs
@@ -217,6 +231,10 @@ class Downstream:
 class Upstream:
     headroom_w: float
     current_power_w: float
+    # Handed back unchanged from the grid cell: everything about the grid that a
+    # cell further up needs. The grid is read in one place, the grid cell.
+    grid_w: float = 0.0
+    allowed_import_w: Optional[float] = None
 
 
 @dataclass
@@ -667,17 +685,24 @@ def upstream_pass(cells: list) -> dict:
     """
     headroom = 0.0
     current_power = 0.0
+    grid = 0.0
+    allowed = None
     result = {}
 
     for cfg, st in reversed(cells):
         if cfg.mode == "grid":
-            if cfg.peak_limit_w is not None:
-                headroom = cfg.peak_limit_w
+            ceiling = grid_ceiling_w(cfg)
+            if ceiling is not None:
+                headroom = ceiling
             current_power = st.measured_w  # P1 grid measured
+            grid = st.measured_w
+            allowed = grid_allowed_import_w(cfg)
 
         result[cfg.id] = Upstream(
             headroom_w=headroom,
             current_power_w=current_power,
+            grid_w=grid,
+            allowed_import_w=allowed,
         )
 
         # Headroom passes through unchanged — no buffer from downstream cells
@@ -743,6 +768,85 @@ def quarter_remaining_s(minute: int, second: int) -> float:
     return 900.0 - (minute % 15) * 60.0 - second
 
 
+def month_start_peak(measured: float, policy: str, start_ref: float) -> float:
+    """What the (stale) monthly-peak reading counts as inside the rollover window."""
+    if policy == "zero":
+        return 0.0
+    if policy == "configured":
+        return min(measured, start_ref)
+    return measured                      # "previous" — behaviour as it was
+
+
+def in_month_rollover_window(now, start_window_min: int, end_window_min: int) -> bool:
+    """True around the month rollover — on either side of midnight.
+
+    Both windows apply the same cap (see month_start_peak):
+
+    * after — the first start_window_min minutes of the 1st. The meter holds the
+      previous month's peak for a while past midnight (measured on the P1,
+      2026-08-31: 15,2 minutes), so a stale ceiling there licenses EB to
+      re-establish the old peak in the very first block of the new month.
+    * before — the last end_window_min minutes of the last day of the month. A
+      tier already pulling 3 kW at 23:59 is still pulling it at 00:01, and that
+      block is what sets the new month's peak; the brake has to be biting before
+      the boundary rather than racing to catch it. It also makes the whole
+      mechanism testable without waiting a month.
+
+    Either window at 0 switches that side off.
+    """
+    minute_of_day = now.hour * 60 + now.minute
+    if start_window_min > 0 and now.day == 1 and minute_of_day < start_window_min:
+        return True
+    last_day = monthrange(now.year, now.month)[1]
+    if (end_window_min > 0 and now.day == last_day
+            and (1440 - minute_of_day) <= end_window_min):
+        return True
+    return False
+
+
+def grid_ceiling_w(cfg: CellConfig) -> Optional[float]:
+    """The grid cell's ceiling: max(month start, measured peak, your max).
+
+    * month start (peak_limit_w) — what you WANT the month to cost; it never
+      moves on its own.
+    * measured peak — once a month is spoiled, staying under the start buys
+      nothing, so the measurement may raise the ceiling.
+    * your max — a knob that only ever raises.
+
+    None when the grid cell has no start reference (then there is no ceiling).
+    """
+    if cfg.peak_limit_w is None:
+        return None
+    running = 0.0
+    for v, is_month_peak in cfg.peak_readings_w:
+        if cfg.month_rollover and is_month_peak:
+            v = month_start_peak(v, cfg.month_start_peak_policy, cfg.peak_limit_w)
+        if v > running:
+            running = v
+    return max(cfg.peak_limit_w, running, cfg.peak_max_w)
+
+
+def allowed_import_w(ceiling_w: float, block_w: float, remaining_s: float) -> float:
+    """Average import the grid still allows for the rest of this quarter.
+
+        room    = (ceiling − block so far) × 900 W·s
+        allowed = room / seconds left
+
+    0.0 once the quarter is over. Can be negative: the block is already over.
+    """
+    if remaining_s <= 0:
+        return 0.0
+    return (ceiling_w - block_w) * 900.0 / remaining_s
+
+
+def grid_allowed_import_w(cfg: CellConfig) -> Optional[float]:
+    """allowed_import_w for the grid cell; None without block inputs."""
+    ceiling = grid_ceiling_w(cfg)
+    if ceiling is None or cfg.block_now_w is None or cfg.block_remaining_s is None:
+        return None
+    return allowed_import_w(ceiling, cfg.block_now_w, cfg.block_remaining_s)
+
+
 def block_budget_w(ceiling_w: float, block_w: float, remaining_s: float,
                    other_load_w: float) -> float:
     """What the tier may still draw so the quarter closes at or under the ceiling.
@@ -772,10 +876,46 @@ def block_budget_w(ceiling_w: float, block_w: float, remaining_s: float,
     Returns 0.0 when there is no room left, never a negative (this brake caps
     charging; it never asks for discharge).
     """
-    if remaining_s <= 0:
-        return 0.0
-    allowed_avg = (ceiling_w - block_w) * 900.0 / remaining_s
-    return max(0.0, allowed_avg - other_load_w)
+    return max(0.0, allowed_import_w(ceiling_w, block_w, remaining_s) - other_load_w)
+
+
+def block_counter_lag_s(received_s: float, first_value_w: float, grid_w: float) -> float:
+    """How far the meter's 15-minute counter runs behind, measured on its reset.
+
+    The first reading of a new quarter arrives `received_s` after the boundary
+    and already holds `first_value_w` — the energy since the boundary, expressed
+    as an average over 900 s. At `grid_w` that energy took
+    first_value_w × 900 / grid_w seconds to build up; whatever is left of
+    `received_s` is the delay between the meter and Home Assistant.
+
+    Measured 2026-10-21 on a P1 dongle: the reset lands at :x0:10 holding
+    ~25 W, so ~5 s of a new quarter at ~4.5 kW — a delay of 9-11 s on every
+    importing quarter. With nothing drawn the counter stays at 0 and
+    `received_s` is only an upper bound, so the caller learns only while
+    importing. Clamped to 0-60 s.
+    """
+    accrued = first_value_w * 900.0 / grid_w if grid_w > 50.0 else 0.0
+    return max(0.0, min(60.0, received_s - accrued))
+
+
+def block_now_w(seen_w: float, age_s: float, grid_w: float,
+                elapsed_s: float, reset_seen: bool) -> float:
+    """The running 15-minute counter as it stands NOW, from a reading `age_s` old.
+
+    A reading is the counter at the moment the meter produced it, so whatever
+    the grid drew since is missing. Reading it as current made the block brake
+    aim ~50 W over the ceiling — at ~4.7 kW, 10 s late is 4700 × 10 / 900 —
+    and every charging quarter of 2026-10-21 closed 35-67 W over the monthly
+    peak, which then became the next quarter's ceiling.
+
+    Until the reset of the new quarter has been seen, the counter still shows
+    the old quarter's total; the new quarter is then what the grid drew since
+    the boundary.
+    """
+    grid = max(0.0, grid_w)
+    if not reset_seen:
+        return grid * max(0.0, elapsed_s) / 900.0
+    return seen_w + grid * max(0.0, min(age_s, elapsed_s)) / 900.0
 
 
 def reactive_charge_ramp(prev_pct, grid_w, threshold_w,
@@ -1008,9 +1148,25 @@ def _pool_controller(members, fw, headroom, grid_w, tier_state, flags, forecast,
     return (outputs, fw.rest_w - taken, flags,
             _claim_forecast(taken, fw.rest_w, forecast), prev)
 
+def tier_block_budget(up: Upstream, group: list) -> Optional[float]:
+    """What the tier may still draw this quarter: the grid cell's allowed import
+    minus what the rest of the house draws.
+
+    `other_load_w` is everything on the meter that is NOT this tier, so the tier
+    gets what is left of the block after the house has been served. Its own draw
+    is the measurement rather than the setpoint: measuring is knowing, and a
+    device that ignores its setpoint must not also get a budget computed as if it
+    had obeyed. Offline members count too — the meter sees them all.
+    """
+    if up.allowed_import_w is None:
+        return None
+    tier_w = sum(float(st.measured_w) for cfg, st in group
+                 if cfg.type == "house_battery" and st is not None)
+    return max(0.0, up.allowed_import_w - (max(0.0, up.grid_w) - max(0.0, tier_w)))
+
+
 def process_tier(group: list, fw: Downstream, bw_data: dict,
-                 grid_w: float = 0.0, tier_pct: dict = None,
-                 intent=None, block_budget_w=None) -> tuple:
+                 tier_pct: dict = None, intent=None) -> tuple:
     """Process >1 cells sharing a position as one tier (parallel pool).
 
     One writer, one value. The external charge brain decides how hard the pool
@@ -1018,9 +1174,11 @@ def process_tier(group: list, fw: Downstream, bw_data: dict,
     each cell's own caps, taper and SoC. It never discharges: the brain has no
     verb for it, and a released cell covers the house from its own regulation.
 
-    `block_budget_w` is the single correction on that base value — the power the
-    tier may still draw for the rest of the quarter without pushing the 15-minute
-    average over the ceiling. None leaves the base untouched.
+    The block budget is the single correction on that base value — the power
+    the tier may still draw for the rest of the quarter without pushing the
+    15-minute average over the ceiling. It is built from what the grid cell hands
+    back up the chain (bw_data); without a block sensor it is None and the base
+    stays untouched.
 
     Returns (outputs, rest_out, flags_out, forecast_out, prev); outputs and prev
     are dicts keyed by cell id.
@@ -1046,11 +1204,14 @@ def process_tier(group: list, fw: Downstream, bw_data: dict,
     if not members:
         return outputs, rest, flags, forecast, prev
 
-    headroom = bw_data[members[0][0].id].headroom_w  # peak import ceiling (W)
+    up = bw_data[members[0][0].id]
+    headroom = up.headroom_w  # peak import ceiling (W)
+    grid_w = up.grid_w
+    budget = tier_block_budget(up, group)
 
     p_out, rest_out, flags, fc, p_prev = _pool_controller(
         members, fw, headroom, grid_w, tier_pct if tier_pct is not None else {},
-        flags, forecast, intent=intent, block_budget_w=block_budget_w)
+        flags, forecast, intent=intent, block_budget_w=budget)
     outputs.update(p_out)
     prev.update(p_prev)
     return outputs, rest_out, flags, fc, prev
@@ -1109,8 +1270,7 @@ def _detail(cfg, st, rest_in, rest_out, bw, out, fc_in, fc_out) -> dict:
 # ---------------------------------------------------------------------------
 
 def compute(cells: list, forecast_wh: float = 0.0,
-            grid_w: float = 0.0, tier_pct: dict = None,
-            intent=None, block_budget_w=None) -> ChainResult:
+            tier_pct: dict = None, intent=None) -> ChainResult:
     """Run one tick of the energy balancer.
 
     cells: list of (CellConfig, CellState) tuples — all 6 cells.
@@ -1167,19 +1327,31 @@ def compute(cells: list, forecast_wh: float = 0.0,
         else:
             t_out, new_rest, new_flags, new_forecast, t_prev = process_tier(
                 group, Downstream(rest, forecast, flags), bw_data,
-                grid_w=grid_w, tier_pct=tier_pct, intent=intent,
-                block_budget_w=block_budget_w)
+                tier_pct=tier_pct, intent=intent)
+            t_budget = tier_block_budget(bw_data[group[0][0].id], group)
             for cfg, st in group:
                 out = t_out[cfg.id]
                 bw = bw_data[cfg.id]
                 outputs[cfg.id] = out
                 d = _detail(cfg, st, rest, new_rest, bw, out, forecast, new_forecast)
                 d["tier"] = True
+                if t_budget is not None:
+                    d["block_budget_w"] = round(t_budget, 1)
                 details[cfg.id] = d
                 st.prev_action = t_prev[cfg.id]
             rest = new_rest
             flags = new_flags
             forecast = new_forecast
+
+    # The grid cell publishes what it hands back up the chain.
+    for cfg, st in ordered:
+        if cfg.mode == "grid" and cfg.id in details:
+            details[cfg.id]["peak_limit_w"] = grid_ceiling_w(cfg)
+            allowed = grid_allowed_import_w(cfg)
+            if allowed is not None:
+                details[cfg.id]["block_now_w"] = round(cfg.block_now_w, 1)
+                details[cfg.id]["block_remaining_s"] = round(cfg.block_remaining_s, 1)
+                details[cfg.id]["allowed_import_w"] = round(allowed, 1)
 
     # Grid predicted = what the grid cell absorbed
     grid_cell = [cfg for cfg, _ in ordered if cfg.mode == "grid"]
@@ -1195,6 +1367,19 @@ def compute(cells: list, forecast_wh: float = 0.0,
 # ---------------------------------------------------------------------------
 # Layer aggregation — one virtual block per priority layer (pure, testable)
 # ---------------------------------------------------------------------------
+
+def sum_meters(readings: list) -> float | None:
+    """Sum of the members' energy meters, or None while any of them is unreadable.
+
+    A total_increasing sensor that drops is a meter reset to Home Assistant, which
+    then adds the whole value back on recovery. At every restart the members'
+    meters are unavailable for a moment; counting those as 0 published 0 (or one
+    battery's total) and booked ~5,000 kWh per restart (2026-07-10 .. 11-04).
+    """
+    if not readings or any(r is None for r in readings):
+        return None
+    return round(sum(readings), 3)
+
 
 def build_layers(cells: list, outputs: dict, details: dict) -> list:
     """Aggregate cells into one block per priority layer.
@@ -1286,5 +1471,18 @@ def build_layers(cells: list, outputs: dict, details: dict) -> list:
                 "action": action,
                 **per_soc,
             })
+        # What a layer hands to the next one. A tier is processed as one unit,
+        # so its chain values are the same on every member; a single-cell layer
+        # simply has its cell's.
+        first = details.get(member_ids[0], {})
+        if first.get("tier") or len(member_ids) == 1:
+            for k in ("rest_in_w", "rest_out_w", "forecast_in_wh",
+                      "forecast_out_wh", "block_budget_w"):
+                if k in first:
+                    layer[k] = first[k]
+            # Upstream, a block hands on the headroom it got unchanged
+            # (upstream_pass), so its predecessor reads it here, not at the grid.
+            if "headroom_w" in first:
+                layer["headroom_out_w"] = first["headroom_w"]
         layers.append(layer)
     return layers

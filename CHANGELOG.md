@@ -1,5 +1,43 @@
 # Changelog
 
+## 0.3.0
+
+### Breaking
+- Entity ids follow one rule: `<domain>.eb_<cell>_<what>`, the block that computes a
+  value first (see `naming.py` and `NAMING.md`). Examples: `sensor.eb_net_peak_limit`
+  (was `sensor.eb_target_peak_limit`), `sensor.eb_homebattery_layer` (was
+  `sensor.eb_layer_home_battery`), `number.eb_net_peak_limit_w` (was
+  `number.eb_peak_limit_w`). Home Assistant keeps the entity id of an entity that is
+  already registered, so an existing install keeps its old ids until they are renamed
+  in Settings → Entities; dashboards, automations and scripts that use them must follow.
+- The peak knobs (`peak_limit_w`, `peak_max_w`, month start peak policy) moved from the
+  EB System device to the grid cell's device.
+- Removed the SEM copies of values that have their own EB sensor; the bundled cards
+  derive them from that sensor.
+
+### Added
+- `sensor.eb_<cell>_headroom_out`: the net ceiling a block hands on to the next one.
+  A car charger after the home battery reads its headroom from the battery tier, not
+  from the grid.
+
+### Fixed
+- The block brake brings the meter's 15-minute counter forward by its measured delay;
+  a late P1 reading no longer lets the brake aim over the ceiling.
+- A layer's energy meters (`*_energy_charged` / `*_energy_discharged`) are unknown while
+  any member meter is unreadable, instead of summing the readable ones. A restart no
+  longer produces a drop that the statistics took for a meter reset.
+
+### Changed
+- The ceiling (start reference, measured monthly peak, own maximum) is decided in one
+  function in `core.py`; the grid cell publishes it and the block budget reaches the
+  tier from the grid cell only.
+- `sensor.eb_net_cell` no longer repeats the ceiling as `peak_limit_w`; read
+  `sensor.eb_net_peak_limit`.
+
+### Tests
+- `tests/test_block_counter_lag.py`, plus naming, headroom, layer meter and attribute
+  guards in the existing suites.
+
 ## 0.2.2
 
 ### Security

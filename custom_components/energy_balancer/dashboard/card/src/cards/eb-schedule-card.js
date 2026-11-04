@@ -12,6 +12,7 @@
 
 import { SEMLitBase, html, css, nothing } from '../base/eb-lit-base.js';
 import { semTheme, semDefineCard, SEM_COLORS } from '../base/eb-shared.js';
+import { withLegacyIds } from '../base/eb-legacy-ids.js';
 
 const DEFAULT_PREFIX = 'sensor.ebi_';
 
@@ -89,6 +90,7 @@ class SEMScheduleCard extends SEMLitBase {
 
     // Override hass setter: key includes attribute values, not just entity states
     set hass(hass) {
+        hass = withLegacyIds(hass);
         this._hass = hass;
 
         const lang = hass?.language;

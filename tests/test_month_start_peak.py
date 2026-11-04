@@ -10,65 +10,26 @@ The window works on both sides of midnight. The side before exists because the
 tier does not stop on a dime: what runs at 23:59 is still running at 00:01. It
 also makes the whole thing testable without waiting for a month to turn.
 
-The methods below are NOT retyped but extracted from coordinator.py with ast
-and executed here — coordinator.py imports homeassistant and so does not fit
-the stdlib runner, but a copy could silently drift from the original. That is
-exactly the trap in which 247 tests stayed green while every live tick crashed
-(2026-08-31).
+The rule lives in the grid cell (core.in_month_rollover_window,
+core.month_start_peak, core.grid_ceiling_w) and is tested here directly. The
+coordinator only supplies the clock and says which reading is the month peak;
+the last test guards that wiring, since coordinator.py imports homeassistant
+and does not fit the stdlib runner.
 """
 
-import ast
 import os
+import pathlib
 import sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from calendar import monthrange
 from datetime import datetime
 
-_WANTED = ("_in_month_start_window", "_month_start_peak")
-
-
-def _find_source():
-    """coordinator.py sits next to tests/, but the stdlib runner runs the tests in
-    a flat directory where the file is a sibling. Search both places instead of
-    assuming one."""
-    here = os.path.dirname(os.path.abspath(__file__))
-    for candidate in (os.path.join(here, "..", "coordinator.py"),
-                      os.path.join(here, "coordinator.py"),
-                      os.path.join(here, "..", "custom_components", "energy_balancer",
-                                   "coordinator.py")):
-        if os.path.exists(candidate):
-            return candidate
-    raise AssertionError("coordinator.py not found from " + here)
-
-
-_SOURCE = _find_source()
-
-
-def _load_real_methods():
-    """Extract the two methods from coordinator.py without importing homeassistant."""
-    tree = ast.parse(open(_SOURCE).read())
-    cls = next(
-        n for n in ast.walk(tree)
-        if isinstance(n, ast.ClassDef)
-        and any(isinstance(f, ast.FunctionDef) and f.name == _WANTED[0] for f in n.body)
-    )
-    namespace = {"datetime": datetime, "monthrange": monthrange}
-    found = {}
-    for f in cls.body:
-        if isinstance(f, ast.FunctionDef) and f.name in _WANTED:
-            exec(compile(ast.Module([f], []), _SOURCE, "exec"), namespace)
-            found[f.name] = namespace[f.name]
-    missing = set(_WANTED) - set(found)
-    assert not missing, f"coordinator.py lacks {missing}"
-    return found
-
-
-_REAL = _load_real_methods()
+from core import (CellConfig, grid_ceiling_w, in_month_rollover_window,
+                  month_start_peak)
 
 
 class _Fake:
-    """Only the fields the window logic reads; the methods are the real ones."""
+    """The coordinator's settings, wired to the grid cell's real rule."""
 
     def __init__(self, policy="previous", window=30, sensor="sensor.month_peak_demand",
                  ceiling=3000.0, end=0):
@@ -78,8 +39,13 @@ class _Fake:
         self.month_peak_sensor = sensor
         self.peak_limit_default = ceiling
 
-    _in_month_start_window = _REAL["_in_month_start_window"]
-    _month_start_peak = _REAL["_month_start_peak"]
+    def _in_month_start_window(self, now):
+        return bool(self.month_peak_sensor) and in_month_rollover_window(
+            now, self.month_start_window_min, self.month_end_window_min)
+
+    def _month_start_peak(self, measured):
+        return month_start_peak(measured, self.month_start_peak_policy,
+                                self.peak_limit_default)
 
 
 FIRST_QUARTER = datetime(2026, 9, 1, 0, 7, 0)
@@ -237,3 +203,29 @@ def test_the_cap_is_the_same_on_both_sides():
     assert c._in_month_start_window(LAST_DAY_2145)
     assert c._in_month_start_window(FIRST_QUARTER)
     assert c._month_start_peak(3498.0) == 2500.0
+
+
+# ------------------------------------------------ the grid cell applies it
+def _net(policy, rollover, readings, start=3000.0):
+    return CellConfig(id="net", position=99, mode="grid", peak_limit_w=start,
+                      peak_readings_w=readings, month_start_peak_policy=policy,
+                      month_rollover=rollover)
+
+
+def test_grid_cell_caps_only_the_month_peak_inside_the_window():
+    readings = ((3498.0, True), (3050.0, False))
+    assert grid_ceiling_w(_net("zero", True, readings)) == 3050.0
+    assert grid_ceiling_w(_net("configured", True, readings)) == 3050.0
+    assert grid_ceiling_w(_net("previous", True, readings)) == 3498.0
+    assert grid_ceiling_w(_net("zero", False, readings)) == 3498.0
+
+
+def test_the_coordinator_wires_the_window_as_before():
+    """No month peak sensor, no window; only that sensor's reading is flagged."""
+    root = pathlib.Path(__file__).resolve().parent.parent
+    src = next(p for p in (root / "coordinator.py",
+                           root / "custom_components" / "energy_balancer" / "coordinator.py")
+               if p.exists())
+    t = src.read_text()
+    assert "rollover = bool(self.month_peak_sensor) and in_month_rollover_window(" in t
+    assert "bool(s) and s == self.month_peak_sensor" in t

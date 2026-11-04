@@ -4,7 +4,7 @@
   value and writes back to the configured source (an entity reference is the
   single knob; we drive it rather than keeping a private copy).
 * number.eb_<cell>_<param> — live-tunable algo params (sunny_min_soc,
-  no_sun_min_soc, hysteresis, charge_floor_w) and number.eb_peak_limit_w.
+  no_sun_min_soc, hysteresis, charge_floor_w) and number.eb_net_peak_limit_w.
   These write through to the config-entry options (dual control: dashboard
   AND options-flow stay in sync); only created when the configured value is
   numeric — a param set to an entity reference keeps that reference as the
@@ -18,7 +18,8 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.const import PERCENTAGE
 
 from .const import DOMAIN
-from .devices import cell_device, layer_device, system_device
+from .devices import cell_device, layer_device
+from .naming import cell_prefix, entity_id, slug
 from .params import CELL_ALGO_SPEC, SYSTEM_SPEC, is_entity_ref
 
 # (key, unit, step) — ranges come from the params spec (single source).
@@ -127,6 +128,7 @@ class EBTakeNumber(CoordinatorEntity, NumberEntity):
         self._cell_id = cell_id
         self._attr_unique_id = f"{DOMAIN}_take_{cell_id}"
         self._attr_name = f"EB {cell_id} take %"
+        self.entity_id = entity_id("number", cell_prefix(coordinator, cell_id), "take")
         self._attr_device_info = cell_device(cell_id)
 
     def _configured(self):
@@ -173,13 +175,17 @@ class EBParamNumber(NumberEntity):
         self._attr_native_step = step
         self._attr_native_unit_of_measurement = unit
         if cell_id is None:
+            # The system-wide knobs are the peak's, and the peak is the grid
+            # cell's: they live on the net device and carry its name.
             self._attr_unique_id = f"{DOMAIN}_param_{key}"
             self._attr_name = f"EB {key}"
-            self._attr_device_info = system_device()
+            self._attr_device_info = cell_device("net")
+            self.entity_id = entity_id("number", "net", key)
         else:
             self._attr_unique_id = f"{DOMAIN}_param_{cell_id}_{key}"
             self._attr_name = f"EB {cell_id} {key}"
             self._attr_device_info = cell_device(cell_id)
+            self.entity_id = entity_id("number", cell_prefix(coordinator, cell_id), key)
 
     async def async_set_native_value(self, value: float) -> None:
         from . import async_persist_option  # late import: avoids cycle
@@ -212,6 +218,7 @@ class EBTierParamNumber(NumberEntity):
         self._attr_unique_id = f"{DOMAIN}_param_{lid}_{key}"
         self._attr_name = f"EB {lid} {key}"
         self._attr_device_info = layer_device(lid)
+        self.entity_id = entity_id("number", slug(lid), key)
 
     async def async_set_native_value(self, value: float) -> None:
         from . import async_persist_option  # late import: avoids cycle

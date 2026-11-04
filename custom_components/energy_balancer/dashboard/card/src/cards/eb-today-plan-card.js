@@ -17,6 +17,7 @@
 
 import { SEMLitBase, html, css, nothing } from '../base/eb-lit-base.js';
 import { semDefineCard, semFormatTime } from '../base/eb-shared.js';
+import { withLegacyIds } from '../base/eb-legacy-ids.js';
 
 const DEFAULT_ENTITY = 'sensor.ebi_charging_state';
 
@@ -51,6 +52,7 @@ class SEMTodayPlanCard extends SEMLitBase {
     }
 
     set hass(hass) {
+        hass = withLegacyIds(hass);
         this._hass = hass;
         const a = hass?.states[this._entity]?.attributes || {};
         const plan = a.today_plan || [];

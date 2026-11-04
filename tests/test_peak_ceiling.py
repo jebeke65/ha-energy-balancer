@@ -8,14 +8,14 @@
 * **P1 monthly peak** (`month_peak_sensor`, in the configuration) — what
   actually happened. If the month already stands at 3498, staying lower saves
   nothing any more; that room is already paid for.
-* **your max** (`number.eb_peak_max_w`) — a knob that can only go up. Its lower
+* **your max** (`number.eb_net_peak_max_w`) — a knob that can only go up. Its lower
   bound moves with `max(month start, P1)`, because setting it below reality
   means nothing: a quarter hour that is spent cannot be undone.
 
-The logic lives in `coordinator.py`, which imports homeassistant and so does not
-fit this runner. Here the rule stands on its own; the last test guards that the
-two do not drift apart — exactly the trap in which 247 tests stayed green while
-every live tick crashed (2026-08-31).
+The ceiling is decided in the grid cell (`core.grid_ceiling_w`); the knob's
+lower bound lives in `coordinator.py`. Here the rule stands on its own; the last
+tests guard that the two do not drift apart — exactly the trap in which 247
+tests stayed green while every live tick crashed (2026-08-31).
 """
 
 import sys, os, re, pathlib
@@ -84,6 +84,19 @@ def test_lower_bound_moves_up_with_it():
 
 
 # ------------------------------------------------------- copy == original
+def test_the_grid_cell_uses_the_same_rule():
+    """grid_ceiling_w must give what ceiling() above gives, the max over all sensors."""
+    from core import CellConfig, grid_ceiling_w
+    for start in (0, 2500):
+        for p1 in (0, 900, 3498):
+            for other in (0, 3100):
+                for knob in (0, 1000, 5000):
+                    cfg = CellConfig(id="net", position=99, mode="grid",
+                                     peak_limit_w=start, peak_max_w=knob,
+                                     peak_readings_w=((p1, True), (other, False)))
+                    assert grid_ceiling_w(cfg) == ceiling(start, max(p1, other), knob)
+
+
 def test_the_rule_is_the_same_as_in_the_coordinator():
     """This copy must match what coordinator.py actually does.
 
@@ -94,9 +107,5 @@ def test_the_rule_is_the_same_as_in_the_coordinator():
                            root / "custom_components" / "energy_balancer" / "coordinator.py")
                if p.exists())
     t = src.read_text()
-    assert "peak_limit = max(self.peak_limit_default, running_peak, self.peak_max_w)" in t, \
-        "coordinator.py no longer computes the ceiling as the max of the three"
-    assert re.search(r"if v > running_peak:\s*\n\s*running_peak = v", t), \
-        "coordinator.py no longer takes `running_peak` as the maximum over the sensors"
     assert "return max(self.peak_limit_default, measured)" in t, \
         "coordinator.py no longer returns the knob's lower bound as max(start, reading)"

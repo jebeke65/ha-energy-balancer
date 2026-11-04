@@ -8,8 +8,11 @@
 # energy-impact/CO2, EV charge-plan (today-plan/schedule/ev-progress),
 # SOC-zones, forecast-vs-actual. Add their sensors first, then the cards.
 #
-# Centerpiece = eb-chain-card (EB's own power-flow visual), fed by the
-# compatibility sensors (sensor.eb_solar_power, eb_battery_power, ...).
+# Centerpiece = eb-chain-card (EB's own power-flow visual); the generator
+# hands every cell its own entity. The SEM-ported cards still ask for SEM's
+# names (sensor.eb_solar_power, eb_battery_power, ...); since 2026-11-04 those
+# resolve through dashboard/card/src/base/eb-legacy-ids.js onto the
+# naming.py ids.
 
 title: Energy Balancer
 views:
@@ -78,11 +81,11 @@ views:
             default_period: "24h"
             title: Grid import / export (today)
             series:
-              - entity: sensor.eb_daily_grid_import_energy
+              - entity: sensor.eb_net_energy_import_daily
                 name: Import
                 color: "#ff7043"
                 type: area
-              - entity: sensor.eb_daily_grid_export_energy
+              - entity: sensor.eb_net_energy_export_daily
                 name: Export
                 color: "#4caf50"
                 type: area
@@ -204,7 +207,7 @@ views:
           - type: custom:eb-grid-card
           - type: entities
             title: Layers / pools
-            eb_fill: layers               # every sensor.eb_layer_* that exists
+            eb_fill: layers               # every sensor.eb_*_layer that exists
           - type: markdown
             title: Per-cell diagnostics
             eb_fill: diagnostics_markdown # loops over every cell in the chain

@@ -26,7 +26,7 @@ ABOVE_TARGET = ({"soc": 60, "target": 25}, {"soc": 60, "target": 25})
 def _tier(socs, mode, pct):
     """Run the live path (tier_pct present) with a translated external policy."""
     cells = chain(600, 900, *socs)
-    return compute(cells, grid_w=0.0, tier_pct={4: 0.0},
+    return compute(cells, tier_pct={4: 0.0},
                    intent=from_external(mode, pct))
 
 

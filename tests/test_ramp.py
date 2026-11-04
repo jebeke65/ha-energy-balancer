@@ -52,10 +52,11 @@ def test_pool_releases_above_target_import():
     # self-consumption (goodwe general + marstek anti_feed). NOT explicit
     # discharge — the inverters cover the house on their own fast meter.
     cells = chain(0, 0, {"soc": 60, "target": 50}, {"soc": 60, "target": 50})
+    cells[-1][1].measured_w = 500           # grid cell: import < peak
     tp = {4: 0}
     r = None
     for _ in range(10):
-        r = compute(cells, grid_w=500, tier_pct=tp)     # import < peak
+        r = compute(cells, tier_pct=tp)
     assert o(r, "goodwe").action == "autonomous"
     assert o(r, "marstek").action == "autonomous"
 
@@ -64,10 +65,11 @@ def test_pool_releases_above_target_surplus():
     # Above target + exporting (surplus) → RELEASE to autonomous self-consumption.
     # The inverters soak the surplus themselves (no explicit grid-follow pump).
     cells = chain(0, 0, {"soc": 60, "target": 50}, {"soc": 60, "target": 50})
+    cells[-1][1].measured_w = -1000         # grid cell: exporting above target
     tp = {4: 0}
     r = None
     for _ in range(5):
-        r = compute(cells, grid_w=-1000, tier_pct=tp)   # exporting above target
+        r = compute(cells, tier_pct=tp)
     assert o(r, "goodwe").action == "autonomous"
     assert o(r, "marstek").action == "autonomous"
 

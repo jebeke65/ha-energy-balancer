@@ -14,7 +14,6 @@ from __future__ import annotations
 
 import logging
 import time
-from calendar import monthrange
 from datetime import datetime, timedelta
 
 from homeassistant.core import HomeAssistant
@@ -46,8 +45,9 @@ from .const import (
 )
 from .actuation import run_actuation
 from .intake import from_external
-from .core import (CellConfig, CellState, block_budget_w, build_layers,
-                   compute, quarter_remaining_s)
+from .core import (CellConfig, CellState, block_counter_lag_s,
+                   block_now_w, build_layers, compute, in_month_rollover_window,
+                   quarter_remaining_s, sum_meters)
 from . import car_brain
 from .params import clamp_algo, validate_config
 
@@ -107,15 +107,20 @@ class EBCoordinator(DataUpdateCoordinator):
         self.peak_limit_default = float(config.get(CONF_PEAK_LIMIT_W, DEFAULT_PEAK_LIMIT_W))
         self.peak_limit_sensors = config.get(CONF_PEAK_LIMIT_SENSORS, []) or []
         self.peak_max_w = float(config.get("peak_max_w", 0.0) or 0.0)
-        # Upper brake: the running 15-minute block. See _block_budget.
+        # Upper brake: the running 15-minute block. See _block_inputs.
         self.block_demand_sensor = config.get("block_demand_sensor") or ""
+        # How far that counter runs behind, learned on each quarter reset, and
+        # what is needed to spot the reset. See _block_inputs.
+        self.block_counter_lag_s = 0.0
+        self._block_prev_w: float | None = None
+        self._block_reset_boundary: float | None = None
         # Month rollover: the meter keeps last month's peak for the first quarter
         # of the new month, so the fresh month would inherit it. See
-        # _in_month_start_window / _month_start_peak.
+        # core.in_month_rollover_window / core.month_start_peak.
         self.month_peak_sensor = config.get("month_peak_sensor") or ""
         self.month_start_peak_policy = config.get("month_start_peak_policy", "previous")
         self.month_start_window_min = int(config.get("month_start_window_min", 30))
-        # Same cap, but already biting BEFORE midnight. See _in_month_start_window.
+        # Same cap, but already biting BEFORE midnight. See core.in_month_rollover_window.
         self.month_end_window_min = int(config.get("month_end_window_min", 0))
         self.import_price_cfg = config.get("import_price_per_kwh", 0.0)
         self.export_price_cfg = config.get("export_price_per_kwh", 0.0)
@@ -263,6 +268,9 @@ class EBCoordinator(DataUpdateCoordinator):
     LIVE_ALGO_KEYS = ("sunny_min_soc", "no_sun_min_soc", "hysteresis",
                       "charge_floor_w", "take_pct", "pv_weight",
                       "min_soc_mode", "manual_min_soc",
+                      # External target (e.g. the AppDaemon target SoC). Live,
+                      # so wiring it in or out never needs a restart.
+                      "target_soc",
                       # Car brain. use_car_brain is the important one: it is the
                       # way in AND the way back, so it must flip without a
                       # reload. All of these are read from cell_io every tick.
@@ -456,38 +464,35 @@ class EBCoordinator(DataUpdateCoordinator):
             self._cell_states[cfg.id] = st
             source_sensors[cfg.id] = io.get("power_sensor", "")
 
-        # --- The one place the ceiling is decided -------------------------
-        # Two inputs, one rule:
-        #   start reference — peak_limit_w, the number in EB's own config. It is
-        #     what you WANT the month to cost and it never moves on its own.
-        #   running reference — the measured monthly peak. Once a month is
-        #     spoiled, staying under the start reference buys nothing, so the
-        #     measurement may raise the ceiling. That is the max().
-        #   your own max — a knob that only ever raises. Its lower bound moves
-        #     with max(peak, start), so it cannot be set under what already
-        #     happened; that would mean nothing, since a spent quarter cannot be
-        #     unspent.
-        # Everything else in the house should read the published result
-        # (sensor.eb_target_peak_limit) rather than recompute this.
-        in_window = self._in_month_start_window()
-        running_peak = 0.0
-        for s in self.peak_limit_sensors:
-            v = self._read_float(s, 0.0)
-            if in_window and s and s == self.month_peak_sensor:
-                v = self._month_start_peak(v)
-            if v > running_peak:
-                running_peak = v
-        peak_limit = max(self.peak_limit_default, running_peak, self.peak_max_w)
+        # --- The grid cell's raw inputs ----------------------------------
+        # The ceiling itself is decided in the grid cell (core.grid_ceiling_w);
+        # here only the readings and settings are gathered. Everything else in
+        # the house should read the published result
+        # (sensor.eb_net_peak_limit) rather than recompute it.
+        now = datetime.now()
+        peak_readings = tuple(
+            (self._read_float(s, 0.0), bool(s) and s == self.month_peak_sensor)
+            for s in self.peak_limit_sensors)
+        rollover = bool(self.month_peak_sensor) and in_month_rollover_window(
+            now, self.month_start_window_min, self.month_end_window_min)
 
+        # The grid cell owns every grid input: meter, ceiling and the running
+        # 15-minute block. Cells further up get them back through the chain.
+        block_now, block_remaining = self._block_inputs(grid)
         cells.append(
             (CellConfig(id="net", position=99, mode="grid", type="grid",
-                        peak_limit_w=peak_limit),
+                        peak_limit_w=self.peak_limit_default,
+                        peak_readings_w=peak_readings,
+                        peak_max_w=self.peak_max_w,
+                        month_start_peak_policy=self.month_start_peak_policy,
+                        month_rollover=rollover,
+                        block_now_w=block_now,
+                        block_remaining_s=block_remaining),
              CellState(measured_w=grid))
         )
 
-        result = compute(cells, forecast_wh=forecast, grid_w=grid,
-                         tier_pct=self._tier_pct, intent=self._charge_intent(),
-                         block_budget_w=self._block_budget(peak_limit, grid, cells))
+        result = compute(cells, forecast_wh=forecast,
+                         tier_pct=self._tier_pct, intent=self._charge_intent())
 
         # Persist the latched prev_action per steerable cell.
         for cfg in self.cell_configs:
@@ -497,22 +502,19 @@ class EBCoordinator(DataUpdateCoordinator):
                 if st.car_state is not None:
                     self._car_states[cfg.id] = st.car_state
 
+        peak_limit = result.details["net"]["peak_limit_w"]
         layers = build_layers(cells, result.outputs, result.details)
 
         # Energy counters summed per layer (read here so the entity stays pure).
         for layer in layers:
-            ec = ed = 0.0
-            has_ec = has_ed = False
-            for cid in layer["members"]:
-                io = self.cell_io.get(cid, {})
-                if io.get("energy_charged_sensor"):
-                    ec += self._read_float(io["energy_charged_sensor"], 0.0)
-                    has_ec = True
-                if io.get("energy_discharged_sensor"):
-                    ed += self._read_float(io["energy_discharged_sensor"], 0.0)
-                    has_ed = True
-            layer["energy_charged_kwh"] = round(ec, 3) if has_ec else None
-            layer["energy_discharged_kwh"] = round(ed, 3) if has_ed else None
+            for direction in ("charged", "discharged"):
+                sensors = [self.cell_io.get(cid, {}).get(f"energy_{direction}_sensor")
+                           for cid in layer["members"]]
+                sensors = [s for s in sensors if s]
+                layer[f"has_energy_{direction}"] = bool(sensors)
+                layer[f"energy_{direction}_kwh"] = (
+                    sum_meters([self._read_float(s, None) for s in sensors])
+                    if sensors else None)
 
         cell_type = {cfg.id: (cfg.type or cfg.mode) for cfg, _ in cells}
         compat = self._build_compat(result.details, layers)
@@ -535,8 +537,13 @@ class EBCoordinator(DataUpdateCoordinator):
             "cell_type": cell_type,
             "layers": layers,
             "compat": compat,
-            "extras": self._build_extras(solar, house, grid, peak_limit,
-                                         import_price, export_price, forecast),
+            "extras": {
+                **self._build_extras(solar, house, grid, peak_limit,
+                                     import_price, export_price, forecast),
+                # What the grid still allows this quarter (grid cell output).
+                "net_allowed_import": {
+                    "value": result.details["net"].get("allowed_import_w")},
+            },
             "timestamp": now.isoformat(timespec="seconds"),
         }
 
@@ -554,70 +561,57 @@ class EBCoordinator(DataUpdateCoordinator):
         return max(self.peak_limit_default, measured)
 
     # ------------------------------------------------------- block budget
-    def _block_budget(self, ceiling_w: float, grid_w: float, cells) -> float | None:
-        """Upper brake: what the tier may still draw this quarter (W).
+    def _block_inputs(self, grid_w: float) -> tuple:
+        """The grid cell's block inputs: (block as it stands now, seconds left).
 
-        None when no block sensor is configured — then the base value is left
-        alone and the external brain's own peak limit is the only guard.
-
-        `other_load_w` is everything on the meter that is NOT this tier, so the
-        tier gets what is left of the block after the house has been served. Its
-        own draw is taken from the measurement rather than the setpoint: measuring
-        is knowing, and a device that ignores its setpoint must not also get a budget
-        computed as if it had obeyed.
+        (None, None) when no block sensor is configured — then the tier gets no
+        budget and the external brain's own peak limit is the only guard. The
+        budget itself is worked out in the chain (core.tier_block_budget).
         """
         if not self.block_demand_sensor:
-            return None
+            return None, None
         block_w = self._read_float(self.block_demand_sensor, 0.0)
         now = datetime.now()
         remaining = quarter_remaining_s(now.minute, now.second)
-        tier_w = sum(
-            float(st.measured_w)
-            for cfg, st in cells
-            if cfg.type == "house_battery" and st is not None
-        )
-        return block_budget_w(ceiling_w, block_w, remaining,
-                             max(0.0, grid_w) - max(0.0, tier_w))
+        return self._block_now(block_w, grid_w, now), remaining
 
-    # --------------------------------------------------- month rollover
-    def _in_month_start_window(self, now: datetime | None = None) -> bool:
-        """True around the month rollover — on either side of midnight.
+    def _block_now(self, seen_w: float, grid_w: float, now: datetime) -> float:
+        """The block counter as it stands now, not as it stood when it was read.
 
-        Both windows apply the same cap (see _month_start_peak):
-
-        * after — the first month_start_window_min minutes of the 1st. The meter
-          holds the previous month's peak for a while past midnight (measured on
-          the P1, 2026-08-31: 15,2 minutes), so a stale ceiling there licenses EB
-          to re-establish the old peak in the very first block of the new month.
-        * before — the last month_end_window_min minutes of the last day of the
-          month. A tier already pulling 3 kW at 23:59 is still pulling it at
-          00:01, and that block is what sets the new month's peak; the brake has
-          to be biting before the boundary rather than racing to catch it. It
-          also makes the whole mechanism testable without waiting a month.
-
-        Either window at 0 switches that side off; no month_peak_sensor switches
-        the whole thing off.
+        The counter reaches Home Assistant late (P1 dongle: ~10 s). The delay is
+        measured on every quarter reset — the first reading after the boundary
+        shows how long the new quarter has been running at the meter — so a
+        different meter needs no setting.
         """
-        if not self.month_peak_sensor:
-            return False
-        now = now or datetime.now()
-        minute_of_day = now.hour * 60 + now.minute
-        if (self.month_start_window_min > 0 and now.day == 1
-                and minute_of_day < self.month_start_window_min):
-            return True
-        last_day = monthrange(now.year, now.month)[1]
-        if (self.month_end_window_min > 0 and now.day == last_day
-                and (1440 - minute_of_day) <= self.month_end_window_min):
-            return True
-        return False
-
-    def _month_start_peak(self, measured: float) -> float:
-        """What the (stale) monthly-peak reading counts as inside the window."""
-        if self.month_start_peak_policy == "zero":
-            return 0.0
-        if self.month_start_peak_policy == "configured":
-            return min(measured, self.peak_limit_default)
-        return measured                      # "previous" — behaviour as it was
+        state = self.hass.states.get(self.block_demand_sensor)
+        elapsed = (now.minute % 15) * 60 + now.second + now.microsecond / 1e6
+        now_ts = time.time()
+        boundary = round(now_ts - elapsed)
+        if (self._block_prev_w is not None and seen_w < self._block_prev_w - 1.0
+                and elapsed <= 60.0):
+            # The counter dropped right after a boundary: the new quarter's first
+            # reading. (A drop later on is the sensor dropping out, not a reset.)
+            # Only an importing grid tells how long the new quarter has run; at
+            # 0 W the counter stays at 0 and the delay cannot be told apart.
+            if grid_w > 50.0:
+                changed = state.last_changed.timestamp() if state is not None else now_ts
+                lag = block_counter_lag_s(changed - boundary, seen_w, grid_w)
+                self.block_counter_lag_s = (lag if self.block_counter_lag_s <= 0.0
+                                            else 0.5 * (self.block_counter_lag_s + lag))
+            self._block_reset_boundary = boundary
+        elif self._block_reset_boundary != boundary and elapsed > 60.0:
+            # No drop seen, but a minute into the quarter the reset is past
+            # (started mid-quarter, or the old quarter ended at 0). The lag is
+            # clamped to 60 s, so this cannot catch the old quarter's total.
+            self._block_reset_boundary = boundary
+        self._block_prev_w = seen_w
+        reported = now_ts
+        if state is not None:
+            ts = getattr(state, "last_reported", None) or state.last_updated
+            reported = ts.timestamp()
+        age = max(0.0, now_ts - reported) + self.block_counter_lag_s
+        return block_now_w(seen_w, age, grid_w, elapsed,
+                           reset_seen=self._block_reset_boundary == boundary)
 
     # ------------------------------------------------------- 15-min peak
     def _track_quarter_peak(self, now: datetime, grid_w: float) -> None:

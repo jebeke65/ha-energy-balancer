@@ -17,6 +17,7 @@
 
 import { SEMLitBase, html, css, svg, nothing } from '../base/eb-lit-base.js';
 import { semDefineCard } from '../base/eb-shared.js';
+import { withLegacyIds } from '../base/eb-legacy-ids.js';
 
 const DEFAULT_ENTITY = 'sensor.ebi_tariff_current_import_rate';
 const LEVELS = {
@@ -55,6 +56,7 @@ class SEMPriceCard extends SEMLitBase {
     }
 
     set hass(hass) {
+        hass = withLegacyIds(hass);
         this._hass = hass;
         const e = hass?.states[this._entity];
         const a = e?.attributes || {};

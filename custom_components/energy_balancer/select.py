@@ -26,7 +26,8 @@ from homeassistant.components.select import SelectEntity
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN, UNAVAILABLE_STATES
-from .devices import cell_device, layer_device, system_device
+from .devices import cell_device, layer_device
+from .naming import cell_prefix, entity_id, slug
 from .params import CELL_ALGO_SPEC, SYSTEM_SPEC, is_entity_ref
 
 _KEY = "min_soc_mode"
@@ -88,6 +89,7 @@ class EBTierModeSelect(SelectEntity):
         self._attr_unique_id = f"{DOMAIN}_param_{lid}_{_KEY}"
         self._attr_name = f"EB {lid} {_KEY}"
         self._attr_device_info = layer_device(lid)
+        self.entity_id = entity_id("select", slug(lid), _KEY)
 
     async def async_select_option(self, option: str) -> None:
         from . import async_persist_option  # late import: avoids cycle
@@ -122,6 +124,7 @@ class EBCarModeWindowSelect(CoordinatorEntity, SelectEntity):
         self._attr_unique_id = f"{DOMAIN}_param_{cell_id}_{_CAR_KEY}"
         self._attr_name = f"EB {cell_id} mode"
         self._attr_device_info = cell_device(cell_id)
+        self.entity_id = entity_id("select", cell_prefix(coordinator, cell_id), "mode")
 
     def _state(self):
         return self._hass.states.get(self._helper)
@@ -193,7 +196,9 @@ class EBMonthStartPolicySelect(SelectEntity):
             else SYSTEM_SPEC[_MONTH_KEY].default)
         self._attr_unique_id = f"{DOMAIN}_param_{_MONTH_KEY}"
         self._attr_name = "EB month start peak policy"
-        self._attr_device_info = system_device()
+        # The peak is the grid cell's (see number.py, the peak knobs).
+        self._attr_device_info = cell_device("net")
+        self.entity_id = entity_id("select", "net", _MONTH_KEY)
 
     async def async_select_option(self, option: str) -> None:
         from . import async_persist_option  # late import: avoids cycle
@@ -225,6 +230,7 @@ class EBCarModeOwnSelect(SelectEntity):
         self._attr_unique_id = f"{DOMAIN}_param_{cell_id}_{_CAR_KEY}"
         self._attr_name = f"EB {cell_id} mode"
         self._attr_device_info = cell_device(cell_id)
+        self.entity_id = entity_id("select", cell_prefix(coordinator, cell_id), "mode")
 
     async def async_select_option(self, option: str) -> None:
         from . import async_persist_option  # late import: avoids cycle

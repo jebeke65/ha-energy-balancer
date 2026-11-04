@@ -20,6 +20,7 @@ import { startOfDayInHaTz } from '../util/time-zone.js';
 /* ── Chart.js, bundled (no runtime download) ── */
 import { Chart, registerables } from 'chart.js';
 import 'chartjs-adapter-date-fns';
+import { withLegacyIds } from '../base/eb-legacy-ids.js';
 
 Chart.register(...registerables);
 
@@ -139,6 +140,7 @@ class SEMChartCard extends SEMLitBase {
 
     // ── hass: only trigger update on locale change; period events handle data refresh ──
     set hass(hass) {
+        hass = withLegacyIds(hass);
         this._hass = hass;
         const lang = hass?.language;
         if (lang !== this._lang) {

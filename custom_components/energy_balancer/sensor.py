@@ -1,8 +1,8 @@
 """Energy Balancer sensor platform.
 
-Publishes one sensor.eb_<cell> per chain cell, a sensor.eb_<cell>_performance
+Publishes one sensor.eb_<cell>_cell per chain cell, a sensor.eb_<cell>_performance
 per steerable cell, a status sensor, and one block per priority layer
-(power / SoC / target / energy).
+(power / SoC / target / energy). Entity ids follow naming.py.
 """
 
 from __future__ import annotations
@@ -17,6 +17,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN, ENTITY_PREFIX
 from .devices import cell_device, costs_device, layer_device, system_device
+from .naming import EXTRA_IDS, cell_prefix, entity_id, slug
 
 
 # Cells EB never steers: their output is copied straight from the meter.
@@ -63,38 +64,25 @@ async def async_setup_entry(hass, entry, async_add_entities):
         if layer.get("has_soc"):
             layer_entities.append(EBLayerSocSensor(coordinator, lid))
             layer_entities.append(EBLayerTargetSensor(coordinator, lid))
-            if layer.get("energy_charged_kwh") is not None:
+            if layer.get("has_energy_charged"):
                 layer_entities.append(EBLayerEnergySensor(coordinator, lid, "charged"))
-            if layer.get("energy_discharged_kwh") is not None:
+            if layer.get("has_energy_discharged"):
                 layer_entities.append(EBLayerEnergySensor(coordinator, lid, "discharged"))
+        # What this block hands to the next one. Every block but the grid
+        # cell, so a priority change never leaves a block without them.
+        if layer.get("kind") != "grid":
+            for what in ("rest_out", "forecast_out", "headroom_out"):
+                layer_entities.append(EBChainSensor(coordinator, layer, what))
         for ent in layer_entities:
             ent._attr_device_info = dev
         entities.extend(layer_entities)
 
-    # SEM-shaped compatibility sensors (feed the ported SEM cards).
-    # Each lands on the device of the cell/pool it describes.
-    storage_pools = [l["id"] for l in data.get("layers", [])
-                     if l.get("has_soc") and len(l.get("members", [])) > 1]
-    battery_dev = layer_device(storage_pools[0]) if storage_pools else None
-    car_cells = [c.id for c in coordinator.cell_configs if c.type == "car_charger"]
-    compat_dev = {
-        "solar_power": cell_device("solar"),
-        "home_consumption_power": cell_device("house"),
-        "grid_power": cell_device("net"),
-        "grid_import_power": cell_device("net"),
-        "grid_export_power": cell_device("net"),
-    }
-    if car_cells:
-        compat_dev["ev_power"] = cell_device(car_cells[0])
-    if battery_dev:
-        compat_dev.update({"battery_power": battery_dev,
-                           "battery_soc": battery_dev,
-                           "battery_status": battery_dev})
+    # SEM-shaped ratios. The SEM copies of cell values (solar_power,
+    # grid_power, battery_power …) are no longer published: each one repeated a
+    # cell or layer sensor (removed 2026-11-04).
     for key in data.get("compat", {}):
-        ent = EBCompatSensor(coordinator, key)
-        if key in compat_dev:
-            ent._attr_device_info = compat_dev[key]
-        entities.append(ent)
+        if key in _COMPAT_SPEC:
+            entities.append(EBCompatSensor(coordinator, key))
 
     # Detail sensors for the SEM-shaped cards (tariff/costs/peak/surplus/diag).
     for key in data.get("extras", {}):
@@ -132,6 +120,7 @@ class EBCellSensor(_EBBase):
         super().__init__(coordinator, cell_id, cell_id)
         self._cell_id = cell_id
         self._attr_name = f"EB {cell_id}"
+        self.entity_id = entity_id("sensor", cell_prefix(coordinator, cell_id), "cell")
         # Every chain cell — steerable AND virtual (solar/house/net) —
         # gets its own device.
         self._attr_device_info = cell_device(cell_id)
@@ -164,18 +153,20 @@ class EBCellSensor(_EBBase):
             "actuator_unit": act.get("unit"),
             "actuator_service": act.get("service"),
             "actuator_sent": act.get("sent"),
-            "rest_in_w": detail.get("rest_in_w", 0),
-            "rest_out_w": detail.get("rest_out_w", 0),
-            "headroom_w": detail.get("headroom_w", 0),
             "successor_power_w": detail.get("successor_power_w", 0),
             "measured_w": detail.get("measured_w", 0),
             "soc": detail.get("soc"),
             "target_soc": detail.get("target_soc"),
-            "forecast_in_wh": detail.get("forecast_in_wh", 0),
-            "forecast_out_wh": detail.get("forecast_out_wh", 0),
             "take_pct": detail.get("take_pct", 100),
             "source_sensor": self._data.get("source_sensors", {}).get(self._cell_id, ""),
             "timestamp": self._data.get("timestamp"),
+            # Grid cell: its block inputs. Tier: its quarter budget. What a cell
+            # hands to another cell is a sensor of its own (EBChainSensor), and a
+            # value that has its own sensor is not repeated here (the ceiling is
+            # sensor.eb_net_peak_limit).
+            **{k: detail[k] for k in ("block_now_w", "block_remaining_s",
+                                      "block_budget_w")
+               if k in detail},
         }
 
 
@@ -205,6 +196,8 @@ class EBCellPerformanceSensor(_EBBase):
                          f"{cell_id}_performance")
         self._cell_id = cell_id
         self._attr_name = f"EB {cell_id} performance"
+        self.entity_id = entity_id("sensor", cell_prefix(coordinator, cell_id),
+                                   "performance")
         self._attr_device_info = cell_device(cell_id)
 
     def _pair(self) -> tuple[float, float] | None:
@@ -303,6 +296,7 @@ class EBLayerSensor(_EBLayerBase):
     def __init__(self, coordinator, lid: str) -> None:
         super().__init__(coordinator, lid, f"layer_{lid}", f"layer_{lid}")
         self._attr_name = f"EB Layer {lid}"
+        self.entity_id = entity_id("sensor", slug(lid), "layer")
 
     @property
     def native_value(self):
@@ -328,7 +322,44 @@ class EBLayerSensor(_EBLayerBase):
             for k in ("action", "soc", "capacity_kwh", "energy_stored_kwh",
                       "target_soc", "charge_avail_w", "discharge_avail_w"):
                 attrs[k] = layer.get(k)
+        if "block_budget_w" in layer:
+            attrs["block_budget_w"] = layer["block_budget_w"]
         return attrs
+
+
+class EBChainSensor(_EBLayerBase):
+    """What a block hands to its neighbour in the chain: rest (W) and forecast
+    (Wh) downstream, headroom (W) upstream.
+
+    Inside EB the cells pass these in memory within one tick; this sensor shows
+    what was passed. Named after the block that computes it (naming.py).
+    """
+
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _SPEC = {
+        "rest_out": ("rest_out_w", SensorDeviceClass.POWER, UnitOfPower.WATT),
+        "forecast_out": ("forecast_out_wh", SensorDeviceClass.ENERGY, UnitOfEnergy.WATT_HOUR),
+        "headroom_out": ("headroom_out_w", SensorDeviceClass.POWER, UnitOfPower.WATT),
+    }
+
+    def __init__(self, coordinator, layer: dict, what: str) -> None:
+        lid = layer["id"]
+        super().__init__(coordinator, lid, f"{lid}_{what}", f"chain_{lid}_{what}")
+        self._key, self._attr_device_class, self._attr_native_unit_of_measurement = self._SPEC[what]
+        if self._attr_device_class == SensorDeviceClass.ENERGY:
+            # A forecast is a measurement, not a meter (see _EXTRA_SPEC).
+            self._attr_device_class = None
+        members = layer.get("members", [])
+        prefix = (cell_prefix(coordinator, members[0]) if len(members) == 1
+                  else slug(lid))
+        self._attr_name = f"EB {lid} {what.replace('_', ' ')}"
+        self.entity_id = entity_id("sensor", prefix, what)
+
+    @property
+    def native_value(self):
+        layer = self._layer()
+        v = layer.get(self._key) if layer else None
+        return round(v) if v is not None else None
 
 
 class EBLayerSocSensor(_EBLayerBase):
@@ -341,6 +372,7 @@ class EBLayerSocSensor(_EBLayerBase):
     def __init__(self, coordinator, lid: str) -> None:
         super().__init__(coordinator, lid, f"layer_{lid}_soc", f"layer_{lid}_soc")
         self._attr_name = f"EB Layer {lid} SoC"
+        self.entity_id = entity_id("sensor", slug(lid), "soc")
 
     @property
     def native_value(self):
@@ -358,6 +390,7 @@ class EBLayerTargetSensor(_EBLayerBase):
     def __init__(self, coordinator, lid: str) -> None:
         super().__init__(coordinator, lid, f"layer_{lid}_target", f"layer_{lid}_target")
         self._attr_name = f"EB Layer {lid} Target SoC"
+        self.entity_id = entity_id("sensor", slug(lid), "target_soc")
 
     @property
     def native_value(self):
@@ -377,6 +410,7 @@ class EBLayerEnergySensor(_EBLayerBase):
                          f"layer_{lid}_energy_{direction}")
         self._direction = direction
         self._attr_name = f"EB Layer {lid} Energy {direction.capitalize()}"
+        self.entity_id = entity_id("sensor", slug(lid), f"energy_{direction}")
 
     @property
     def native_value(self):
@@ -387,17 +421,8 @@ class EBLayerEnergySensor(_EBLayerBase):
 # --- SEM-compatibility sensors -------------------------------------------------
 # (key, friendly name, device_class, unit, state_class)
 _COMPAT_SPEC = {
-    "solar_power": ("Solar Power", SensorDeviceClass.POWER, UnitOfPower.WATT, SensorStateClass.MEASUREMENT),
-    "home_consumption_power": ("Home Consumption Power", SensorDeviceClass.POWER, UnitOfPower.WATT, SensorStateClass.MEASUREMENT),
-    "grid_power": ("Grid Power", SensorDeviceClass.POWER, UnitOfPower.WATT, SensorStateClass.MEASUREMENT),
-    "grid_import_power": ("Grid Import Power", SensorDeviceClass.POWER, UnitOfPower.WATT, SensorStateClass.MEASUREMENT),
-    "grid_export_power": ("Grid Export Power", SensorDeviceClass.POWER, UnitOfPower.WATT, SensorStateClass.MEASUREMENT),
-    "ev_power": ("EV Power", SensorDeviceClass.POWER, UnitOfPower.WATT, SensorStateClass.MEASUREMENT),
-    "battery_power": ("Battery Power", SensorDeviceClass.POWER, UnitOfPower.WATT, SensorStateClass.MEASUREMENT),
-    "battery_soc": ("Battery SoC", SensorDeviceClass.BATTERY, "%", SensorStateClass.MEASUREMENT),
     "autarky_rate": ("Autarky Rate", None, "%", SensorStateClass.MEASUREMENT),
     "self_consumption_rate": ("Self-Consumption Rate", None, "%", SensorStateClass.MEASUREMENT),
-    "battery_status": ("Battery Status", None, None, None),
 }
 
 
@@ -427,6 +452,7 @@ _EXTRA_SPEC = {
     "forecast_peak_time_today": (None, None, None, "system"),
     "forecast_source": (None, None, None, "system"),
     "target_peak_limit": (SensorDeviceClass.POWER, _W, _MEAS, "net"),
+    "net_allowed_import": (SensorDeviceClass.POWER, _W, _MEAS, "net"),
     "current_vs_peak_percentage": (None, "%", _MEAS, "net"),
     "consecutive_peak_15min": (SensorDeviceClass.POWER, _W, _MEAS, "net"),
     "monthly_consecutive_peak": (SensorDeviceClass.POWER, _W, _MEAS, "net"),
@@ -478,6 +504,9 @@ class EBExtraSensor(_EBBase):
         self._attr_device_class = dev_class
         self._attr_native_unit_of_measurement = unit
         self._attr_state_class = state_class
+        if key in EXTRA_IDS:
+            device, what = EXTRA_IDS[key]
+            self.entity_id = entity_id("sensor", slug(device), what)
         self._attr_device_info = (costs_device() if device == "costs"
                                   else cell_device(device)
                                   if device in ("net", "solar", "house")

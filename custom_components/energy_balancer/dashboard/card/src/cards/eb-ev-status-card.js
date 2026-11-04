@@ -12,6 +12,7 @@
 
 import { SEMLitBase, html, css, svg, nothing } from '../base/eb-lit-base.js';
 import { semTheme, semFormatPower, semGetCurrency, semDefineCard } from '../base/eb-shared.js';
+import { withLegacyIds } from '../base/eb-legacy-ids.js';
 
 const DEFAULT_PREFIX = 'sensor.ebi_';
 const CHARGER_COLORS = ['#8DC892', '#64B5F6'];
@@ -54,6 +55,7 @@ class SEMEVStatusCard extends SEMLitBase {
      * Override hass setter: dynamic charger discovery + per-charger key comparison.
      */
     set hass(hass) {
+        hass = withLegacyIds(hass);
         const old = this._hass;
         this._hass = hass;
 

@@ -12,6 +12,7 @@
 
 import { SEMLitBase, html, css, nothing } from '../base/eb-lit-base.js';
 import { semTheme, semFormatPower, semGetCurrency, semCardSurfaceCSS, SEM_COLORS, semDefineCard } from '../base/eb-shared.js';
+import { withLegacyIds } from '../base/eb-legacy-ids.js';
 
 const DEFAULT_PREFIX = 'sensor.ebi_';
 
@@ -54,6 +55,7 @@ class SEMBatteryCard extends SEMLitBase {
 
     // Override hass setter: key-based comparison since entities are prefix-dynamic
     set hass(hass) {
+        hass = withLegacyIds(hass);
         this._hass = hass;
 
         const lang = hass?.language;

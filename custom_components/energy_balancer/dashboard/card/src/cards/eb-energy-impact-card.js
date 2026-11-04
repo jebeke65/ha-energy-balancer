@@ -12,6 +12,7 @@
 
 import { SEMLitBase, html, css, nothing } from '../base/eb-lit-base.js';
 import { semTheme, semDefineCard } from '../base/eb-shared.js';
+import { withLegacyIds } from '../base/eb-legacy-ids.js';
 
 const DEFAULT_PREFIX = 'sensor.ebi_';
 
@@ -48,6 +49,7 @@ class SEMEnergyImpactCard extends SEMLitBase {
 
     // ── Override hass setter to watch configurable-prefix entities ──
     set hass(hass) {
+        hass = withLegacyIds(hass);
         const old = this._hass;
         this._hass = hass;
 

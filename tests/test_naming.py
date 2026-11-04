@@ -336,3 +336,4 @@ def test_wiring_survives_an_empty_seed_or_an_empty_entry():
     from core import adopt_wiring
     assert adopt_wiring(ENTRY, {}) == ENTRY
     assert adopt_wiring({}, SEED)["forecast_today_sensor"] == "sensor.solar_forecast_today"
+
