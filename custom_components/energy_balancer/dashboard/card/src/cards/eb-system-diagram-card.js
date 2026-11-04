@@ -23,6 +23,7 @@
  */
 
 import { SEMLitBase, html, css, svg, nothing } from '../base/eb-lit-base.js';
+import { withLegacyIds } from '../base/eb-legacy-ids.js';
 import {
     semFormatPower, semFormatTime, semCalcDuration, semDefineCard, SEM_DEVICE_COLORS,
     semDiscoverPVStrings, semPVStringsCSS, semPVStringStatesKey,
@@ -201,6 +202,7 @@ class SEMSystemDiagramCard extends SEMLitBase {
 
     // ── hass setter: prefix-aware dirty check + target update + tick start ──
     set hass(hass) {
+        hass = withLegacyIds(hass);
         this._hass = hass;
 
         const lang = hass?.language;

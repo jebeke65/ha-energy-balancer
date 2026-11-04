@@ -8,6 +8,7 @@
  */
 
 import { SEMLitBase, html, css, nothing } from '../base/eb-lit-base.js';
+import { withLegacyIds } from '../base/eb-legacy-ids.js';
 import { semTheme, semDefineCard } from '../base/eb-shared.js';
 
 const PERIODS = [
@@ -36,6 +37,7 @@ class SEMPeriodSelectorCard extends SEMLitBase {
 
     // Override hass setter — only check locale changes; no entity comparison needed
     set hass(hass) {
+        hass = withLegacyIds(hass);
         const old = this._hass;
         this._hass = hass;
 

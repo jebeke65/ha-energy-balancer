@@ -406,3 +406,23 @@ def test_cell_attributes_do_not_repeat_the_ceiling_sensor():
         src = fh.read()
     block = re.search(r'for k in \(([^)]*)\)\s*\n\s*if k in detail', src)
     assert block and "peak_limit_w" not in block.group(1)
+
+
+def test_every_card_with_its_own_hass_setter_resolves_the_old_ids():
+    """The ported cards still ask for SEM's names; eb-legacy-ids.js resolves them
+    onto the naming.py ids. A card that overrides `set hass` bypasses the base
+    class, so it must wrap hass itself (2026-11-04: the tab header and the grid
+    card showed 0 on every tab after the rename)."""
+    import glob
+    import re
+    cards = os.path.join(PKG_DIR, "dashboard", "card", "src", "cards", "*.js")
+    bypass = []
+    for path in sorted(glob.glob(cards)):
+        with open(path, encoding="utf-8") as fh:
+            src = fh.read()
+        for m in re.finditer(r"set hass\((\w+)\)\s*\{", src):
+            arg = m.group(1)
+            first = src[m.end():].lstrip().split("\n", 1)[0]
+            if first.strip() != f"{arg} = withLegacyIds({arg});":
+                bypass.append(os.path.basename(path))
+    assert not bypass, bypass

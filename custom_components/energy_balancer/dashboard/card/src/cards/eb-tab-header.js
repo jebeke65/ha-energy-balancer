@@ -6,6 +6,7 @@
  */
 
 import { SEMLitBase, html, css, svg, nothing } from '../base/eb-lit-base.js';
+import { withLegacyIds } from '../base/eb-legacy-ids.js';
 import { semTheme, semFormatPower, semGetCurrency, semDefineCard } from '../base/eb-shared.js';
 
 const _t = (key, hass) => (typeof semLocalize === 'function') ? semLocalize(key, hass?.language) : key;
@@ -131,6 +132,7 @@ class SEMTabHeader extends SEMLitBase {
     }
 
     set hass(hass) {
+        hass = withLegacyIds(hass);
         const old = this._hass;
         this._hass = hass;
 

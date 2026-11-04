@@ -7,6 +7,7 @@
  */
 
 import { SEMLitBase, html, css, nothing } from '../base/eb-lit-base.js';
+import { withLegacyIds } from '../base/eb-legacy-ids.js';
 import { semTheme, semDefineCard } from '../base/eb-shared.js';
 
 class SEMTitleCard extends SEMLitBase {
@@ -31,6 +32,7 @@ class SEMTitleCard extends SEMLitBase {
     }
 
     set hass(hass) {
+        hass = withLegacyIds(hass);
         const old = this._hass;
         this._hass = hass;
 

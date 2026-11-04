@@ -10,6 +10,7 @@
  */
 
 import { SEMLitBase, html, css, nothing } from '../base/eb-lit-base.js';
+import { withLegacyIds } from '../base/eb-legacy-ids.js';
 import { semTheme, semFormatPower, semGetCurrency, semDefineCard } from '../base/eb-shared.js';
 
 const DEFAULT_PREFIX = 'sensor.ebi_';
@@ -47,6 +48,7 @@ class SEMSolarSummaryCard extends SEMLitBase {
 
     // ── Override hass setter for dynamic prefix entity tracking ──
     set hass(hass) {
+        hass = withLegacyIds(hass);
         this._hass = hass;
 
         const lang = hass?.language;

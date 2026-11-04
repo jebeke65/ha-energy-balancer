@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.3.1
+
+### Fixed
+- The tab header (top of every dashboard tab) and the grid card showed 0 or nothing
+  for the values whose entity ids changed in 0.3.0. Every card that sets its own
+  `hass` now resolves the old ids through `eb-legacy-ids.js`, as the base class does.
+
+### Tests
+- A source guard in `tests/test_dashboard.py` fails for any card whose `set hass`
+  does not start with the legacy-id wrapper.
+
 ## 0.3.0
 
 ### Breaking

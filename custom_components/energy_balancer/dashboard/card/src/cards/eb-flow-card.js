@@ -12,6 +12,7 @@
  */
 
 import { SEMLitBase, html, css, nothing } from '../base/eb-lit-base.js';
+import { withLegacyIds } from '../base/eb-legacy-ids.js';
 import { unsafeSVG } from 'lit/directives/unsafe-svg.js';
 import {
     semTheme, semFormatPower, semCalcDuration, semGetCurrency, semDefineCard,
@@ -69,6 +70,7 @@ class SEMFlowCard extends SEMLitBase {
 
     // ── hass setter — debounce flow updates ──
     set hass(hass) {
+        hass = withLegacyIds(hass);
         const oldLang = this._hass?.language;
         this._hass = hass;
         const lang = hass?.language;

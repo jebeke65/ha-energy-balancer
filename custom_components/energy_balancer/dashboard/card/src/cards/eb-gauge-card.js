@@ -14,6 +14,7 @@
  */
 
 import { SEMLitBase, html, css, svg, nothing } from '../base/eb-lit-base.js';
+import { withLegacyIds } from '../base/eb-legacy-ids.js';
 import { semTheme, semDefineCard } from '../base/eb-shared.js';
 
 class SEMGaugeCard extends SEMLitBase {
@@ -31,6 +32,7 @@ class SEMGaugeCard extends SEMLitBase {
     }
 
     set hass(hass) {
+        hass = withLegacyIds(hass);
         const old = this._hass;
         this._hass = hass;
         const newState = hass?.states[this._entity]?.state;
